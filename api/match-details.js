@@ -1,17 +1,13 @@
 export default async function handler(req, res) {
   if (req.method !== "GET") {
-    return res.status(405).json({
-      error: "Method not allowed"
-    });
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   const id = req.query.id;
   const key = process.env.API_FOOTBALL_KEY;
 
   if (!id) {
-    return res.status(400).json({
-      error: "Match ID is required"
-    });
+    return res.status(400).json({ error: "Match ID is required" });
   }
 
   if (!key) {
@@ -21,27 +17,32 @@ export default async function handler(req, res) {
   }
 
   try {
-    const response = await fetch(
-      `https://v3.football.api-sports.io/fixtures?id=${encodeURIComponent(id)}`,
-      {
-        headers: {
-          "x-apisports-key": key
-        }
-      }
-    );
+    const headers = {
+      "x-apisports-key": key
+    };
 
-    const data = await response.json();
+    const [fixtureResponse, statsResponse] = await Promise.all([
+      fetch(
+        `https://v3.football.api-sports.io/fixtures?id=${encodeURIComponent(id)}`,
+        { headers }
+      ),
+      fetch(
+        `https://v3.football.api-sports.io/fixtures/statistics?fixture=${encodeURIComponent(id)}`,
+        { headers }
+      )
+    ]);
 
-    if (!response.ok) {
-      return res.status(response.status).json(data);
+    const fixtureData = await fixtureResponse.json();
+    const statsData = await statsResponse.json();
+
+    if (!fixtureResponse.ok) {
+      return res.status(fixtureResponse.status).json(fixtureData);
     }
 
-    const x = data.response?.[0];
+    const x = fixtureData.response?.[0];
 
     if (!x) {
-      return res.status(404).json({
-        error: "Match not found"
-      });
+      return res.status(404).json({ error: "Match not found" });
     }
 
     const statusMap = {
@@ -67,9 +68,7 @@ export default async function handler(req, res) {
         icon = "⚽";
       } else if (event.type === "Card") {
         icon =
-          event.detail === "Red Card"
-            ? "🟥"
-            : "🟨";
+          event.detail === "Red Card" ? "🟥" : "🟨";
       } else if (event.type === "subst") {
         icon = "🔄";
       } else if (event.type === "Var") {
@@ -88,17 +87,55 @@ export default async function handler(req, res) {
 
         team: event.team?.name || "",
         teamLogo: event.team?.logo || "",
-
         player: event.player?.name || "",
         assist: event.assist?.name || "",
-
         type: event.type || "",
         detail: event.detail || "",
         comments: event.comments || "",
-
         icon
       };
     });
+
+    const rawStats = statsResponse.ok
+      ? statsData.response || []
+      : [];
+
+    const getStat = (teamData, type) => {
+      const stat = teamData?.statistics?.find(
+        item => item.type === type
+      );
+
+      return stat?.value ?? "-";
+    };
+
+    const homeStats = rawStats.find(
+      team => team.team?.id === x.teams.home.id
+    );
+
+    const awayStats = rawStats.find(
+      team => team.team?.id === x.teams.away.id
+    );
+
+    const statTypes = [
+      "Ball Possession",
+      "Total Shots",
+      "Shots on Goal",
+      "Shots off Goal",
+      "Blocked Shots",
+      "Corner Kicks",
+      "Fouls",
+      "Yellow Cards",
+      "Red Cards",
+      "Goalkeeper Saves",
+      "Total passes",
+      "Passes accurate"
+    ];
+
+    const statistics = statTypes.map(type => ({
+      type,
+      home: getStat(homeStats, type),
+      away: getStat(awayStats, type)
+    }));
 
     const match = {
       id: x.fixture.id,
@@ -133,7 +170,8 @@ export default async function handler(req, res) {
         x.fixture.venue?.name ||
         "Not available",
 
-      events
+      events,
+      statistics
     };
 
     res.setHeader(
@@ -141,15 +179,10 @@ export default async function handler(req, res) {
       "s-maxage=10, stale-while-revalidate=20"
     );
 
-    return res.status(200).json({
-      match
-    });
+    return res.status(200).json({ match });
 
   } catch (error) {
-    console.error(
-      "Match details error:",
-      error
-    );
+    console.error("Match details error:", error);
 
     return res.status(500).json({
       error: "Failed to load match details"
