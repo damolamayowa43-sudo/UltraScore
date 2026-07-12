@@ -1,4 +1,75 @@
-let filter="all", allMatches=[];
-async function load(){try{allMatches=await getMatches();const r=await fetch("/api/live-scores");if(r.ok){const j=await r.json();const live=j.matches||[];const ids=new Set(live.map(x=>x.id));allMatches=[...live,...allMatches.filter(x=>!ids.has(x.id))]}}catch(e){console.error(e)}render()}
-function render(){const data=allMatches.filter(m=>filter==="all"||m.status===filter),groups={};data.forEach(m=>(groups[m.league]??=[]).push(m));matches.innerHTML=Object.entries(groups).map(([l,ms])=>`<section class="league"><div class="league-title">⚽ ${l}</div>${ms.map(m=>`<div class="match"><div class="status ${m.status}">${m.status==="live"?"● "+m.time:m.time}</div><div class="team">${m.home}</div><div class="score">${m.hs} - ${m.as}</div><div class="team">${m.away}</div></div>`).join("")}</section>`).join("")||"<p class='muted'>No matches available.</p>"}
-document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tabs button").forEach(x=>x.classList.remove("active"));b.classList.add("active");filter=b.dataset.filter;render()});load();setInterval(load,30000);
+let filter = "all", allMatches = [];
+
+async function load() {
+  try {
+    allMatches = await getMatches();
+
+    const r = await fetch("/api/live-scores");
+    if (r.ok) {
+      const j = await r.json();
+      const live = j.matches || [];
+      const ids = new Set(live.map(x => x.id));
+      allMatches = [...live, ...allMatches.filter(x => !ids.has(x.id))];
+    }
+  } catch (e) {
+    console.error(e);
+  }
+  render();
+}
+
+function render() {
+  const data = allMatches.filter(
+    m => filter === "all" || m.status === filter
+  );
+
+  const groups = {};
+  data.forEach(m => (groups[m.league] ??= []).push(m));
+
+  matches.innerHTML = Object.entries(groups).map(([league, ms]) => `
+    <section class="league">
+      <div class="league-title">
+        ${ms[0]?.leagueLogo
+          ? `<img src="${ms[0].leagueLogo}" class="league-logo">`
+          : "⚽"}
+        ${league}
+      </div>
+
+      ${ms.map(m => `
+        <div class="match">
+          <div class="status ${m.status}">
+            ${m.status === "live" ? "● " + m.time : m.time}
+          </div>
+
+          <div class="team">
+            ${m.homeLogo
+              ? `<img src="${m.homeLogo}" class="team-logo">`
+              : ""}
+            ${m.home}
+          </div>
+
+          <div class="score">${m.hs} - ${m.as}</div>
+
+          <div class="team">
+            ${m.awayLogo
+              ? `<img src="${m.awayLogo}" class="team-logo">`
+              : ""}
+            ${m.away}
+          </div>
+        </div>
+      `).join("")}
+    </section>
+  `).join("") || "<p class='muted'>No matches available.</p>";
+}
+
+document.querySelectorAll(".tabs button").forEach(b => {
+  b.onclick = () => {
+    document.querySelectorAll(".tabs button")
+      .forEach(x => x.classList.remove("active"));
+    b.classList.add("active");
+    filter = b.dataset.filter;
+    render();
+  };
+});
+
+load();
+setInterval(load, 30000);
