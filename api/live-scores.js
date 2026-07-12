@@ -1,29 +1,23 @@
 export default async function handler(req, res) {
   if (req.method !== "GET") {
-    return res.status(405).json({
-      error: "Method not allowed"
-    });
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const key = process.env.API_FOOTBALL_KEY;
+  const key = process.env.FOOTBALL_DATA_KEY;
 
   if (!key) {
     return res.status(500).json({
-      error: "API_FOOTBALL_KEY is not configured"
+      error: "FOOTBALL_DATA_KEY is not configured"
     });
   }
 
-  const headers = {
-    "x-apisports-key": key
-  };
-
   try {
-    const today = new Date().toISOString().split("T")[0];
-
     const response = await fetch(
-      `https://v3.football.api-sports.io/fixtures?date=${today}&timezone=UTC`,
+      "https://api.football-data.org/v4/matches",
       {
-        headers
+        headers: {
+          "X-Auth-Token": key
+        }
       }
     );
 
@@ -31,152 +25,88 @@ export default async function handler(req, res) {
 
     if (!response.ok) {
       return res.status(response.status).json({
-        error: "API-Football request failed",
-        apiResponse: data
+        error: "Football Data API request failed",
+        details: data
       });
     }
 
-    const fixtures = data.response || [];
-
-    const liveStatuses = [
-      "1H",
-      "HT",
-      "2H",
-      "ET",
-      "BT",
-      "P",
-      "INT",
-      "SUSP"
-    ];
-
-    const finishedStatuses = [
-      "FT",
-      "AET",
-      "PEN"
-    ];
-
-    const matches = fixtures.map(x => {
-      const short = x.fixture.status.short;
-
+    const matches = (data.matches || []).map(x => {
       let status = "upcoming";
+      let time = "";
 
-      if (liveStatuses.includes(short)) {
+      if (
+        x.status === "IN_PLAY" ||
+        x.status === "PAUSED"
+      ) {
         status = "live";
-      } else if (finishedStatuses.includes(short)) {
+        time = "LIVE";
+      } else if (x.status === "FINISHED") {
         status = "finished";
-      }
-
-      let displayTime = "";
-
-      if (status === "live") {
-        displayTime =
-          x.fixture.status.elapsed != null
-            ? `${x.fixture.status.elapsed}'`
-            : "LIVE";
-      } else if (status === "finished") {
-        displayTime = "FT";
+        time = "FT";
       } else {
-        displayTime = new Date(
-          x.fixture.date
-        ).toLocaleTimeString("en-GB", {
-          hour: "2-digit",
-          minute: "2-digit",
-          timeZone: "UTC"
-        });
+        status = "upcoming";
+
+        time = new Date(x.utcDate)
+          .toLocaleTimeString("en-GB", {
+            hour: "2-digit",
+            minute: "2-digit",
+            timeZone: "UTC"
+          });
       }
 
       return {
-        id: x.fixture.id,
+        id: x.id,
 
-        league: x.league.name,
-        leagueLogo: x.league.logo || "",
+        league:
+          x.competition?.name ||
+          "Football",
+
+        leagueLogo:
+          x.competition?.emblem ||
+          "",
 
         country:
-          x.league.country ||
+          x.area?.name ||
           "International",
 
         countryFlag:
-          x.league.flag || "",
+          x.area?.flag ||
+          "",
 
-        home: x.teams.home.name,
+        home:
+          x.homeTeam?.name ||
+          "Home Team",
+
         homeLogo:
-          x.teams.home.logo || "",
+          x.homeTeam?.crest ||
+          "",
 
-        away: x.teams.away.name,
+        away:
+          x.awayTeam?.name ||
+          "Away Team",
+
         awayLogo:
-          x.teams.away.logo || "",
+          x.awayTeam?.crest ||
+          "",
 
-        hs: x.goals.home ?? 0,
-        as: x.goals.away ?? 0,
+        hs:
+          x.score?.fullTime?.home ??
+          x.score?.halfTime?.home ??
+          0,
+
+        as:
+          x.score?.fullTime?.away ??
+          x.score?.halfTime?.away ??
+          0,
 
         status,
-        time: displayTime,
+        time,
 
-        fixtureStatus: short,
-        kickoff: x.fixture.date,
+        fixtureStatus: x.status,
+        kickoff: x.utcDate,
 
-        source: "api-football"
+        source: "football-data"
       };
     });
 
-    const order = {
-      live: 0,
-      upcoming: 1,
-      finished: 2
-    };
-
-    matches.sort((a, b) => {
-      if (
-        order[a.status] !==
-        order[b.status]
-      ) {
-        return (
-          order[a.status] -
-          order[b.status]
-        );
-      }
-
-      return (
-        new Date(a.kickoff) -
-        new Date(b.kickoff)
-      );
-    });
-
-    res.setHeader(
-      "Cache-Control",
-      "no-store"
-    );
-
-    return res.status(200).json({
-      dateRequested: today,
-
-      apiErrors:
-        data.errors || {},
-
-      apiResults:
-        data.results ?? null,
-
-      apiParameters:
-        data.parameters || {},
-
-      responseCount:
-        fixtures.length,
-
-      matches
-    });
-
-  } catch (error) {
-    console.error(
-      "Live scores error:",
-      error
-    );
-
-    return res.status(500).json({
-      error:
-        "Failed to load football matches",
-
-      message:
-        error.message
-    });
-  }
-}
+    const
