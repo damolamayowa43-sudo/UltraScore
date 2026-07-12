@@ -157,4 +157,40 @@ export default async function handler(req, res) {
           order[a.status] -
           order[b.status]
         );
-     
+      }
+
+      // Then sort by date/time
+      return (
+        new Date(a.kickoff) -
+        new Date(b.kickoff)
+      );
+    });
+
+    res.setHeader(
+      "Cache-Control",
+      "s-maxage=300, stale-while-revalidate=600"
+    );
+
+    return res.status(200).json({
+      matches,
+      range: {
+        from,
+        to
+      }
+    });
+
+  } catch (error) {
+    console.error(
+      "Live scores error:",
+      error
+    );
+
+    return res.status(500).json({
+      error:
+        "Failed to load live scores",
+
+      message:
+        error.message
+    });
+  }
+}
