@@ -11,100 +11,137 @@ export default async function handler(req, res) {
     });
   }
 
-  // Today's date in YYYY-MM-DD format
-  const today = new Date().toISOString().split("T")[0];
-
-  const r = await fetch(
-    `https://v3.football.api-sports.io/fixtures?date=${today}`,
-    {
-      headers: {
-        "x-apisports-key": key
-      }
-    }
-  );
-
-  const data = await r.json();
-
-  if (!r.ok) {
-    return res.status(r.status).json(data);
-  }
-
-  const liveStatuses = ["1H", "HT", "2H", "ET", "BT", "P", "INT"];
-  const finishedStatuses = ["FT", "AET", "PEN"];
-
-  const matches = (data.response || []).map(x => {
-    const short = x.fixture.status.short;
-
-    let status = "upcoming";
-
-    if (liveStatuses.includes(short)) {
-      status = "live";
-    } else if (finishedStatuses.includes(short)) {
-      status = "finished";
-    }
-
-    let displayTime;
-
-    if (status === "live") {
-      displayTime = x.fixture.status.elapsed
-        ? `${x.fixture.status.elapsed}'`
-        : "LIVE";
-    } else if (status === "finished") {
-      displayTime = "FT";
-    } else {
-      displayTime = new Date(
-        x.fixture.date
-      ).toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit"
-      });
-    }
-
-    return {
-      id: x.fixture.id,
-
-      league: x.league.name,
-      leagueLogo: x.league.logo,
-      country: x.league.country,
-      countryFlag: x.league.flag,
-
-      home: x.teams.home.name,
-      homeLogo: x.teams.home.logo,
-
-      away: x.teams.away.name,
-      awayLogo: x.teams.away.logo,
-
-      hs: x.goals.home ?? 0,
-      as: x.goals.away ?? 0,
-
-      status,
-      time: displayTime,
-
-      fixtureStatus: short,
-      kickoff: x.fixture.date,
-      source: "api-football"
-    };
-  });
-
-  // Live first, then upcoming, then finished
-  const order = {
-    live: 0,
-    upcoming: 1,
-    finished: 2
+  const headers = {
+    "x-apisports-key": key
   };
 
-  matches.sort((a, b) => {
-    if (order[a.status] !== order[b.status]) {
-      return order[a.status] - order[b.status];
+  try {
+    // First try all currently live matches
+    let response = await fetch(
+      "https://v3.football.api-sports.io/fixtures?live=all",
+      { headers }
+    );
+
+    let data = await response.json();
+
+    if (!response.ok) {
+      return res.status(response.status).json(data);
     }
 
-    return new Date(a.kickoff) - new Date(b.kickoff);
-  });
+    let fixtures = data.response || [];
 
-  res.setHeader(
-    "Cache-Control",
-    "s-maxage=30, stale-while-revalidate=60"
-  );
+    // If there are no live matches, get today's fixtures
+    if (fixtures.length === 0) {
+      const today = new Date().toISOString().split("T")[0];
 
-  return res.status(200).json({ matches });
+      response = await fetch(
+        `https://v3.football.api-sports.io/fixtures?date=${today}&timezone=UTC`,
+        { headers }
+      );
+
+      data = await response.json();
+
+      if (!response.ok) {
+        return res.status(response.status).json(data);
+      }
+
+      fixtures = data.response || [];
+    }
+
+    const liveStatuses = [
+      "1H", "HT", "2H", "ET",
+      "BT", "P", "INT", "SUSP"
+    ];
+
+    const finishedStatuses = [
+      "FT", "AET", "PEN"
+    ];
+
+    const matches = fixtures.map(x => {
+      const short = x.fixture.status.short;
+
+      let status = "upcoming";
+
+      if (liveStatuses.includes(short)) {
+        status = "live";
+      } else if (finishedStatuses.includes(short)) {
+        status = "finished";
+      }
+
+      let displayTime = "";
+
+      if (status === "live") {
+        displayTime =
+          x.fixture.status.elapsed != null
+            ? `${x.fixture.status.elapsed}'`
+            : "LIVE";
+      } else if (status === "finished") {
+        displayTime = "FT";
+      } else {
+        displayTime = new Date(
+          x.fixture.date
+        ).toLocaleTimeString("en-GB", {
+          hour: "2-digit",
+          minute: "2-digit",
+          timeZone: "UTC"
+        });
+      }
+
+      return {
+        id: x.fixture.id,
+
+        league: x.league.name,
+        leagueLogo: x.league.logo || "",
+        country: x.league.country || "International",
+        countryFlag: x.league.flag || "",
+
+        home: x.teams.home.name,
+        homeLogo: x.teams.home.logo || "",
+
+        away: x.teams.away.name,
+        awayLogo: x.teams.away.logo || "",
+
+        hs: x.goals.home ?? 0,
+        as: x.goals.away ?? 0,
+
+        status,
+        time: displayTime,
+
+        fixtureStatus: short,
+        kickoff: x.fixture.date,
+        source: "api-football"
+      };
+    });
+
+    const order = {
+      live: 0,
+      upcoming: 1,
+      finished: 2
+    };
+
+    matches.sort((a, b) => {
+      if (order[a.status] !== order[b.status]) {
+        return order[a.status] - order[b.status];
+      }
+
+      return new Date(a.kickoff) - new Date(b.kickoff);
+    });
+
+    res.setHeader(
+      "Cache-Control",
+      "s-maxage=10, stale-while-revalidate=20"
+    );
+
+    return res.status(200).json({
+      matches,
+      count: matches.length
+    });
+
+  } catch (error) {
+    console.error("Live scores error:", error);
+
+    return res.status(500).json({
+      error: "Failed to load football matches"
+    });
+  }
 }
