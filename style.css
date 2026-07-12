@@ -2,6 +2,10 @@
   box-sizing:border-box;
 }
 
+html{
+  scroll-behavior:smooth;
+}
+
 body{
   margin:0;
   background:#070b12;
@@ -12,6 +16,10 @@ body{
 a{
   color:inherit;
   text-decoration:none;
+}
+
+img{
+  max-width:100%;
 }
 
 /* HEADER */
@@ -37,15 +45,6 @@ header{
 
 .brand span{
   color:#1687ff;
-}
-
-.brand small{
-  font-size:10px;
-  background:#1687ff;
-  color:#fff;
-  padding:4px 7px;
-  border-radius:5px;
-  margin-left:6px;
 }
 
 /* BUTTONS */
@@ -151,7 +150,7 @@ main{
   flex-shrink:0;
 }
 
-/* LEAGUE CARD */
+/* LEAGUE */
 
 .league{
   background:#0d1420;
@@ -164,7 +163,6 @@ main{
 .league-title{
   padding:12px 16px;
   background:#111b2a;
-  color:#b8c9de;
   display:flex;
   align-items:center;
   gap:10px;
@@ -175,7 +173,6 @@ main{
   height:18px;
   object-fit:cover;
   border-radius:3px;
-  flex-shrink:0;
 }
 
 .league-info{
@@ -189,7 +186,6 @@ main{
   font-size:10px;
   color:#71839a;
   text-transform:uppercase;
-  margin-bottom:2px;
 }
 
 .league-info strong{
@@ -203,7 +199,6 @@ main{
   width:28px;
   height:28px;
   object-fit:contain;
-  flex-shrink:0;
 }
 
 /* MATCH ROW */
@@ -216,6 +211,7 @@ main{
   padding:15px 16px;
   border-top:1px solid #182337;
   cursor:pointer;
+  transition:background .2s;
 }
 
 .match:hover{
@@ -239,7 +235,6 @@ main{
 .team{
   min-width:0;
   text-align:center;
-  overflow:hidden;
   font-size:13px;
 }
 
@@ -264,15 +259,17 @@ main{
   white-space:nowrap;
 }
 
-/* MATCH DETAILS PAGE */
+/* MATCH DETAILS */
 
 .match-details-page{
   max-width:900px;
   margin:0 auto;
-  padding:30px 20px;
+  padding:30px 20px 60px;
 }
 
-.details-card{
+.details-card,
+.timeline-card,
+.statistics-card{
   width:100%;
   background:#0d1420;
   border:1px solid #192538;
@@ -292,7 +289,6 @@ main{
   width:45px;
   height:45px;
   object-fit:contain;
-  flex-shrink:0;
 }
 
 .details-league div{
@@ -314,9 +310,17 @@ main{
 
 .details-status{
   text-align:center;
-  color:#42a1ff;
+  color:#9cadc4;
   font-weight:800;
   padding:22px 10px 5px;
+}
+
+.details-status.live{
+  color:#42a1ff;
+}
+
+.live-dot{
+  color:#1687ff;
 }
 
 .details-teams{
@@ -335,7 +339,6 @@ main{
 .details-team img{
   width:100px;
   height:100px;
-  max-width:100%;
   object-fit:contain;
   display:block;
   margin:0 auto 14px;
@@ -353,9 +356,14 @@ main{
   white-space:nowrap;
 }
 
+.upcoming-vs{
+  color:#71839a;
+  font-size:24px;
+}
+
 .details-info{
   display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));
+  grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
   border-top:1px solid #192538;
 }
 
@@ -383,18 +391,15 @@ main{
   overflow-wrap:anywhere;
 }
 
-/* MATCH EVENTS TIMELINE */
+/* EVENTS */
 
-.timeline-card{
-  width:100%;
-  margin:20px auto 0;
-  background:#0d1420;
-  border:1px solid #192538;
-  border-radius:16px;
-  overflow:hidden;
+.timeline-card,
+.statistics-card{
+  margin-top:20px;
 }
 
-.timeline-card h2{
+.timeline-card h2,
+.statistics-card h2{
   margin:0;
   padding:18px 20px;
   background:#111b2a;
@@ -436,11 +441,6 @@ main{
   gap:4px;
 }
 
-.event-content strong{
-  color:#edf4ff;
-  overflow-wrap:anywhere;
-}
-
 .event-content span{
   color:#aab8ca;
   font-size:13px;
@@ -448,12 +448,56 @@ main{
 
 .event-content small{
   color:#71839a;
-  overflow-wrap:anywhere;
 }
 
 .no-events{
   text-align:center;
   padding:25px 10px;
+}
+
+/* STATISTICS */
+
+.statistics{
+  padding:8px 20px 18px;
+}
+
+.stat-row{
+  display:grid;
+  grid-template-columns:minmax(60px,1fr) minmax(120px,2fr) minmax(60px,1fr);
+  align-items:center;
+  gap:12px;
+  padding:15px 5px;
+  border-bottom:1px solid #182337;
+}
+
+.stat-row:last-child{
+  border-bottom:0;
+}
+
+.stat-home{
+  text-align:left;
+  color:#edf4ff;
+}
+
+.stat-name{
+  text-align:center;
+  color:#8fa1b9;
+  font-size:13px;
+}
+
+.stat-away{
+  text-align:right;
+  color:#edf4ff;
+}
+
+/* ERROR */
+
+.details-error{
+  background:#0d1420;
+  border:1px solid #192538;
+  border-radius:16px;
+  padding:30px;
+  text-align:center;
 }
 
 /* ADMIN */
@@ -519,15 +563,11 @@ select:focus{
   color:#ff6470;
 }
 
-/* AI ASSISTANT */
+/* AI */
 
 .ai{
   display:flex;
   flex-direction:column;
-}
-
-.ai h2{
-  margin-bottom:3px;
 }
 
 #chat{
@@ -619,20 +659,10 @@ select:focus{
     font-size:18px;
   }
 
-  .country-flag{
-    width:22px;
-    height:16px;
-  }
-
-  .league-logo{
-    width:26px;
-    height:26px;
-  }
-
-  /* MATCH DETAILS MOBILE */
+  /* DETAILS MOBILE */
 
   .match-details-page{
-    padding:18px 12px;
+    padding:18px 12px 40px;
   }
 
   .details-league{
@@ -649,18 +679,17 @@ select:focus{
   }
 
   .details-teams{
-    grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
     gap:8px;
     padding:30px 10px;
   }
 
   .details-team img{
-    width:70px;
-    height:70px;
+    width:65px;
+    height:65px;
   }
 
   .details-team h3{
-    font-size:14px;
+    font-size:13px;
   }
 
   .details-score{
@@ -680,14 +709,10 @@ select:focus{
     border-bottom:0;
   }
 
-  /* TIMELINE MOBILE */
-
-  .timeline-card{
-    margin-top:15px;
-  }
+  /* TIMELINE */
 
   .timeline{
-    padding:5px 15px;
+    padding:5px 12px;
   }
 
   .timeline-event{
@@ -696,14 +721,29 @@ select:focus{
   }
 
   .event-time{
-    font-size:13px;
+    font-size:12px;
   }
 
   .event-icon{
-    font-size:19px;
+    font-size:18px;
   }
 
-  /* ADMIN MOBILE */
+  /* STATISTICS */
+
+  .statistics{
+    padding:5px 12px 15px;
+  }
+
+  .stat-row{
+    grid-template-columns:55px minmax(100px,1fr) 55px;
+    gap:6px;
+  }
+
+  .stat-name{
+    font-size:12px;
+  }
+
+  /* ADMIN */
 
   .admin{
     grid-template-columns:1fr;
