@@ -1,1 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Match Details | UltraScore</title>
+  <link rel="stylesheet" href="style.css">
+</head>
 
+<body>
+
+<header>
+  <div class="brand"><span>ULTRA</span>SCORE</div>
+  <nav>
+    <a href="index.html">
+      <button>← Scores</button>
+    </a>
+  </nav>
+</header>
+
+<main class="match-details-page">
+  <div id="matchDetails">
+    <p class="muted">Loading match...</p>
+  </div>
+</main>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const fixtureId = params.get("id");
+
+async function loadMatch() {
+  const container = document.getElementById("matchDetails");
+
+  if (!fixtureId) {
+    container.innerHTML = "<p>Match ID is missing.</p>";
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      `/api/match-details?id=${encodeURIComponent(fixtureId)}`
+    );
+
+    if (!response.ok) {
+      throw new Error("Could not load match");
+    }
+
+    const data = await response.json();
+    const m = data.match;
+
+    if (!m) {
+      container.innerHTML = "<p>Match not found.</p>";
+      return;
+    }
+
+    container.innerHTML = `
+      <section class="details-card">
+
+        <div class="details-league">
+          ${m.leagueLogo
+            ? `<img src="${m.leagueLogo}" alt="">`
+            : ""
+          }
+
+          <div>
+            <small>${m.country || ""}</small>
+            <strong>${m.league || ""}</strong>
+          </div>
+        </div>
+
+        <div class="details-status">
+          ${m.status === "live" ? "● LIVE" : m.statusText || ""}
+          ${m.time ? ` • ${m.time}` : ""}
+        </div>
+
+        <div class="details-teams">
+
+          <div class="details-team">
+            ${m.homeLogo
+              ? `<img src="${m.homeLogo}" alt="${m.home}">`
+              : ""
+            }
+            <h3>${m.home}</h3>
+          </div>
+
+          <div class="details-score">
+            ${m.hs} - ${m.as}
+          </div>
+
+          <div class="details-team">
+            ${m.awayLogo
+              ? `<img src="${m.awayLogo}" alt="${m.away}">`
+              : ""
+            }
+            <h3>${m.away}</h3>
+          </div>
+
+        </div>
+
+        <div class="details-info">
+          <div>
+            <span>Status</span>
+            <strong>${m.statusText || m.status}</strong>
+          </div>
+
+          <div>
+            <span>Minute</span>
+            <strong>${m.time || "-"}</strong>
+          </div>
+
+          <div>
+            <span>Venue</span>
+            <strong>${m.venue || "Not available"}</strong>
+          </div>
+        </div>
+
+      </section>
+    `;
+
+  } catch (error) {
+    console.error(error);
+    container.innerHTML =
+      "<p class='muted'>Unable to load match details.</p>";
+  }
+}
+
+loadMatch();
+
+setInterval(loadMatch, 30000);
+</script>
+
+</body>
+</html>
