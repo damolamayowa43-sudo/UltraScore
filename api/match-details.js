@@ -1,13 +1,17 @@
 export default async function handler(req, res) {
   if (req.method !== "GET") {
-    return res.status(405).json({ error: "Method not allowed" });
+    return res.status(405).json({
+      error: "Method not allowed"
+    });
   }
 
   const id = req.query.id;
   const key = process.env.API_FOOTBALL_KEY;
 
   if (!id) {
-    return res.status(400).json({ error: "Match ID is required" });
+    return res.status(400).json({
+      error: "Match ID is required"
+    });
   }
 
   if (!key) {
@@ -35,7 +39,9 @@ export default async function handler(req, res) {
     const x = data.response?.[0];
 
     if (!x) {
-      return res.status(404).json({ error: "Match not found" });
+      return res.status(404).json({
+        error: "Match not found"
+      });
     }
 
     const statusMap = {
@@ -54,6 +60,46 @@ export default async function handler(req, res) {
       PEN: "finished"
     };
 
+    const events = (x.events || []).map(event => {
+      let icon = "•";
+
+      if (event.type === "Goal") {
+        icon = "⚽";
+      } else if (event.type === "Card") {
+        icon =
+          event.detail === "Red Card"
+            ? "🟥"
+            : "🟨";
+      } else if (event.type === "subst") {
+        icon = "🔄";
+      } else if (event.type === "Var") {
+        icon = "📺";
+      }
+
+      return {
+        time:
+          event.time?.elapsed != null
+            ? `${event.time.elapsed}${
+                event.time.extra
+                  ? `+${event.time.extra}`
+                  : ""
+              }'`
+            : "",
+
+        team: event.team?.name || "",
+        teamLogo: event.team?.logo || "",
+
+        player: event.player?.name || "",
+        assist: event.assist?.name || "",
+
+        type: event.type || "",
+        detail: event.detail || "",
+        comments: event.comments || "",
+
+        icon
+      };
+    });
+
     const match = {
       id: x.fixture.id,
 
@@ -71,10 +117,12 @@ export default async function handler(req, res) {
       as: x.goals.away ?? 0,
 
       status:
-        statusMap[x.fixture.status.short] || "upcoming",
+        statusMap[x.fixture.status.short] ||
+        "upcoming",
 
       statusText:
-        x.fixture.status.long || x.fixture.status.short,
+        x.fixture.status.long ||
+        x.fixture.status.short,
 
       time:
         x.fixture.status.elapsed != null
@@ -82,7 +130,10 @@ export default async function handler(req, res) {
           : "",
 
       venue:
-        x.fixture.venue?.name || "Not available"
+        x.fixture.venue?.name ||
+        "Not available",
+
+      events
     };
 
     res.setHeader(
@@ -90,10 +141,15 @@ export default async function handler(req, res) {
       "s-maxage=10, stale-while-revalidate=20"
     );
 
-    return res.status(200).json({ match });
+    return res.status(200).json({
+      match
+    });
 
   } catch (error) {
-    console.error(error);
+    console.error(
+      "Match details error:",
+      error
+    );
 
     return res.status(500).json({
       error: "Failed to load match details"
