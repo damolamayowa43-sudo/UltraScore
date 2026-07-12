@@ -1,112 +1,113 @@
 export default async function handler(req, res) {
   if (req.method !== "GET") {
-    return res.status(405).json({ error: "Method not allowed" });
+    return res.status(405).json({
+      error: "Method not allowed"
+    });
   }
 
-  const key = process.env.FOOTBALL_DATA_KEY;
+  const key = process.env.FOOTBALL_API_KEY;
 
   if (!key) {
     return res.status(500).json({
-      error: "FOOTBALL_DATA_KEY is not configured"
+      error: "FOOTBALL_API_KEY is not configured"
     });
   }
 
   try {
-    const response = await fetch(
-      "https://api.football-data.org/v4/matches",
-      {
-        headers: {
-          "X-Auth-Token": key
-        }
-      }
-    );
+    const today = new Date().toISOString().split("T")[0];
 
-    const data = await response.json();
+    const response = await fetch(
+      `https://apiv3.apifootball.com/?action=get_events&from=${today}&to=${today}&APIkey=${encodeURIComponent(key)}`
+    );
 
     if (!response.ok) {
       return res.status(response.status).json({
-        error: "Football Data API request failed",
-        details: data
+        error: "Football API request failed"
       });
     }
 
-    const matches = (data.matches || []).map(x => {
+    const data = await response.json();
+
+    if (!Array.isArray(data)) {
+      return res.status(200).json({
+        matches: [],
+        apiResponse: data
+      });
+    }
+
+    const matches = data.map((x) => {
+      const matchStatus = String(x.match_status || "").toLowerCase();
+
       let status = "upcoming";
-      let time = "";
 
       if (
-        x.status === "IN_PLAY" ||
-        x.status === "PAUSED"
+        matchStatus.includes("finished") ||
+        matchStatus === "ft"
+      ) {
+        status = "finished";
+      } else if (
+        matchStatus &&
+        matchStatus !== "not started" &&
+        matchStatus !== "ns"
       ) {
         status = "live";
-        time = "LIVE";
-      } else if (x.status === "FINISHED") {
-        status = "finished";
-        time = "FT";
-      } else {
-        status = "upcoming";
-
-        time = new Date(x.utcDate)
-          .toLocaleTimeString("en-GB", {
-            hour: "2-digit",
-            minute: "2-digit",
-            timeZone: "UTC"
-          });
       }
 
       return {
-        id: x.id,
+        id: x.match_id,
 
-        league:
-          x.competition?.name ||
-          "Football",
+        league: x.league_name || "Unknown League",
+        leagueLogo: x.league_logo || "",
+        country: x.country_name || "",
+        countryFlag: x.country_logo || "",
 
-        leagueLogo:
-          x.competition?.emblem ||
-          "",
+        home: x.match_hometeam_name || "Home",
+        homeLogo: x.team_home_badge || "",
 
-        country:
-          x.area?.name ||
-          "International",
+        away: x.match_awayteam_name || "Away",
+        awayLogo: x.team_away_badge || "",
 
-        countryFlag:
-          x.area?.flag ||
-          "",
-
-        home:
-          x.homeTeam?.name ||
-          "Home Team",
-
-        homeLogo:
-          x.homeTeam?.crest ||
-          "",
-
-        away:
-          x.awayTeam?.name ||
-          "Away Team",
-
-        awayLogo:
-          x.awayTeam?.crest ||
-          "",
-
-        hs:
-          x.score?.fullTime?.home ??
-          x.score?.halfTime?.home ??
-          0,
-
-        as:
-          x.score?.fullTime?.away ??
-          x.score?.halfTime?.away ??
-          0,
+        hs: Number(x.match_hometeam_score || 0),
+        as: Number(x.match_awayteam_score || 0),
 
         status,
-        time,
 
-        fixtureStatus: x.status,
-        kickoff: x.utcDate,
+        time:
+          status === "finished"
+            ? "FT"
+            : status === "live"
+            ? x.match_status || "LIVE"
+            : x.match_time || "",
 
-        source: "football-data"
+        kickoff: `${today}T${x.match_time || "00:00"}:00`,
+        source: "apifootball"
       };
     });
 
-    const
+    const order = {
+      live: 0,
+      upcoming: 1,
+      finished: 2
+    };
+
+    matches.sort((a, b) => {
+      return order[a.status] - order[b.status];
+    });
+
+    res.setHeader(
+      "Cache-Control",
+      "s-maxage=30, stale-while-revalidate=60"
+    );
+
+    return res.status(200).json({
+      matches
+    });
+  } catch (error) {
+    console.error("Live scores error:", error);
+
+    return res.status(500).json({
+      error: "Failed to load live scores",
+      message: error.message
+    });
+  }
+}
