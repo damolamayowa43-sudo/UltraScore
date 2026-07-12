@@ -14,11 +14,27 @@ export default async function handler(req, res) {
   }
 
   try {
-    const today = new Date().toISOString().split("T")[0];
+    // TODAY
+    const startDate = new Date();
 
-    const response = await fetch(
-      `https://apiv3.apifootball.com/?action=get_events&from=${today}&to=${today}&APIkey=${encodeURIComponent(key)}`
-    );
+    // 90 DAYS FROM TODAY
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + 90);
+
+    const formatDate = (date) =>
+      date.toISOString().split("T")[0];
+
+    const from = formatDate(startDate);
+    const to = formatDate(endDate);
+
+    const url =
+      `https://apiv3.apifootball.com/` +
+      `?action=get_events` +
+      `&from=${from}` +
+      `&to=${to}` +
+      `&APIkey=${encodeURIComponent(key)}`;
+
+    const response = await fetch(url);
 
     if (!response.ok) {
       return res.status(response.status).json({
@@ -36,7 +52,9 @@ export default async function handler(req, res) {
     }
 
     const matches = data.map((x) => {
-      const matchStatus = String(x.match_status || "").toLowerCase();
+      const matchStatus = String(
+        x.match_status || ""
+      ).toLowerCase();
 
       let status = "upcoming";
 
@@ -53,22 +71,55 @@ export default async function handler(req, res) {
         status = "live";
       }
 
+      const matchDate =
+        x.match_date || from;
+
       return {
         id: x.match_id,
 
-        league: x.league_name || "Unknown League",
-        leagueLogo: x.league_logo || "",
-        country: x.country_name || "",
-        countryFlag: x.country_logo || "",
+        league:
+          x.league_name ||
+          "Unknown League",
 
-        home: x.match_hometeam_name || "Home",
-        homeLogo: x.team_home_badge || "",
+        leagueLogo:
+          x.league_logo || "",
 
-        away: x.match_awayteam_name || "Away",
-        awayLogo: x.team_away_badge || "",
+        country:
+          x.country_name ||
+          "International",
 
-        hs: Number(x.match_hometeam_score || 0),
-        as: Number(x.match_awayteam_score || 0),
+        countryFlag:
+          x.country_logo || "",
+
+        home:
+          x.match_hometeam_name ||
+          "Home",
+
+        homeLogo:
+          x.team_home_badge || "",
+
+        away:
+          x.match_awayteam_name ||
+          "Away",
+
+        awayLogo:
+          x.team_away_badge || "",
+
+        // Don't show 0-0 for matches
+        // that have not started
+        hs:
+          status === "upcoming"
+            ? null
+            : Number(
+                x.match_hometeam_score || 0
+              ),
+
+        as:
+          status === "upcoming"
+            ? null
+            : Number(
+                x.match_awayteam_score || 0
+              ),
 
         status,
 
@@ -79,7 +130,13 @@ export default async function handler(req, res) {
             ? x.match_status || "LIVE"
             : x.match_time || "",
 
-        kickoff: `${today}T${x.match_time || "00:00"}:00`,
+        matchDate,
+
+        kickoff:
+          `${matchDate}T${
+            x.match_time || "00:00"
+          }:00`,
+
         source: "apifootball"
       };
     });
@@ -91,23 +148,13 @@ export default async function handler(req, res) {
     };
 
     matches.sort((a, b) => {
-      return order[a.status] - order[b.status];
-    });
-
-    res.setHeader(
-      "Cache-Control",
-      "s-maxage=30, stale-while-revalidate=60"
-    );
-
-    return res.status(200).json({
-      matches
-    });
-  } catch (error) {
-    console.error("Live scores error:", error);
-
-    return res.status(500).json({
-      error: "Failed to load live scores",
-      message: error.message
-    });
-  }
-}
+      // Live first
+      if (
+        order[a.status] !==
+        order[b.status]
+      ) {
+        return (
+          order[a.status] -
+          order[b.status]
+        );
+     
