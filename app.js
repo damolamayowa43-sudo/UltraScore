@@ -3,19 +3,31 @@ let allMatches = [];
 
 async function load() {
   try {
+    // Load matches saved in Supabase
     allMatches = await getMatches();
 
+    // Load live matches from API-Football
     const response = await fetch("/api/live-scores");
 
     if (response.ok) {
       const data = await response.json();
       const apiMatches = data.matches || [];
-      const apiIds = new Set(apiMatches.map(match => match.id));
+
+      const apiIds = new Set(
+        apiMatches.map(match => String(match.id))
+      );
 
       allMatches = [
         ...apiMatches,
-        ...allMatches.filter(match => !apiIds.has(match.id))
+        ...allMatches.filter(
+          match => !apiIds.has(String(match.id))
+        )
       ];
+    } else {
+      console.error(
+        "Live scores API error:",
+        response.status
+      );
     }
   } catch (error) {
     console.error("Failed to load matches:", error);
@@ -25,22 +37,42 @@ async function load() {
 }
 
 function render() {
+  const matchesContainer =
+    document.getElementById("matches");
+
+  if (!matchesContainer) {
+    console.error(
+      'Element with id="matches" was not found.'
+    );
+    return;
+  }
+
   const filteredMatches = allMatches.filter(
-    match => filter === "all" || match.status === filter
+    match =>
+      filter === "all" ||
+      match.status === filter
   );
 
   const groups = {};
 
   filteredMatches.forEach(match => {
+    const country =
+      match.country || "International";
+
+    const league =
+      match.league || "Other Matches";
+
     const groupKey =
-      `${match.country || "International"}__${match.league}`;
+      `${country}__${league}`;
 
     if (!groups[groupKey]) {
       groups[groupKey] = {
-        country: match.country || "International",
-        countryFlag: match.countryFlag || "",
-        league: match.league,
-        leagueLogo: match.leagueLogo || "",
+        country: country,
+        countryFlag:
+          match.countryFlag || "",
+        league: league,
+        leagueLogo:
+          match.leagueLogo || "",
         matches: []
       };
     }
@@ -48,102 +80,179 @@ function render() {
     groups[groupKey].matches.push(match);
   });
 
-  matches.innerHTML =
-    Object.values(groups).map(group => `
-      <section class="league">
+  if (Object.keys(groups).length === 0) {
+    matchesContainer.innerHTML =
+      `<p class="muted">
+        No matches available.
+      </p>`;
+    return;
+  }
 
-        <div class="league-title">
+  matchesContainer.innerHTML =
+    Object.values(groups)
+      .map(group => `
+        <section class="league">
 
-          ${
-            group.countryFlag
-              ? `<img
-                  src="${group.countryFlag}"
-                  class="country-flag"
-                  alt="${group.country}">
+          <div class="league-title">
+
+            ${
+              group.countryFlag
+                ? `
+                  <img
+                    src="${group.countryFlag}"
+                    class="country-flag"
+                    alt=""
+                  >
                 `
-              : ""
-          }
+                : ""
+            }
 
-          <div class="league-info">
-            <span class="country-name">
-              ${group.country}
-            </span>
+            <div class="league-info">
+              <span class="country-name">
+                ${group.country}
+              </span>
 
-            <strong>${group.league}</strong>
+              <strong>
+                ${group.league}
+              </strong>
+            </div>
+
+            ${
+              group.leagueLogo
+                ? `
+                  <img
+                    src="${group.leagueLogo}"
+                    class="league-logo"
+                    alt=""
+                  >
+                `
+                : ""
+            }
+
           </div>
 
-          ${
-            group.leagueLogo
-              ? `<img
-                  src="${group.leagueLogo}"
-                  class="league-logo"
-                  alt="${group.league}">
-                `
-              : ""
-          }
+          ${group.matches
+            .map(m => `
+              <div
+                class="match"
+                data-id="${m.id}"
+                data-source="${m.source || ""}"
+              >
 
-        </div>
+                <div
+                  class="status ${m.status || ""}"
+                >
+                  ${
+                    m.status === "live"
+                      ? `● ${m.time || ""}`
+                      : `${m.time || ""}`
+                  }
+                </div>
 
-        ${group.matches.map(m => `
-          <div
-            class="match"
-            onclick="openMatch('${m.id}', '${m.source || ""}')"
-            role="button"
-            tabindex="0"
-          >
+                <div class="team">
 
-            <div class="status ${m.status}">
-              ${
-                m.status === "live"
-                  ? "● " + m.time
-                  : m.time
-              }
-            </div>
+                  ${
+                    m.homeLogo
+                      ? `
+                        <img
+                          src="${m.homeLogo}"
+                          class="team-logo"
+                          alt=""
+                        >
+                      `
+                      : ""
+                  }
 
-            <div class="team">
+                  <span>
+                    ${m.home || ""}
+                  </span>
 
-              ${
-                m.homeLogo
-                  ? `<img
-                      src="${m.homeLogo}"
-                      class="team-logo"
-                      alt="${m.home}">
-                    `
-                  : ""
-              }
+                </div>
 
-              <span>${m.home}</span>
+                <div class="score">
+                  ${m.hs ?? "-"}
+                  -
+                  ${m.as ?? "-"}
+                </div>
 
-            </div>
+                <div class="team">
 
-            <div class="score">
-              ${m.hs} - ${m.as}
-            </div>
+                  ${
+                    m.awayLogo
+                      ? `
+                        <img
+                          src="${m.awayLogo}"
+                          class="team-logo"
+                          alt=""
+                        >
+                      `
+                      : ""
+                  }
 
-            <div class="team">
+                  <span>
+                    ${m.away || ""}
+                  </span>
 
-              ${
-                m.awayLogo
-                  ? `<img
-                      src="${m.awayLogo}"
-                      class="team-logo"
-                      alt="${m.away}">
-                    `
-                  : ""
-              }
+                </div>
 
-              <span>${m.away}</span>
+              </div>
+            `)
+            .join("")}
 
-            </div>
+        </section>
+      `)
+      .join("");
 
-          </div>
-        `).join("")}
+  document
+    .querySelectorAll(".match")
+    .forEach(matchElement => {
+      matchElement.onclick = () => {
+        const id =
+          matchElement.dataset.id;
 
-      </section>
-    `).join("") ||
-    `<p class="muted">No matches available.</p>`;
+        const source =
+          matchElement.dataset.source;
+
+        openMatch(id, source);
+      };
+    });
 }
 
 function openMatch(id, source) {
-  /* Only API-Football matches have API detail pages */
-  if (source
+  // Only open detail page for API-Football matches
+  if (
+    source === "api-football" &&
+    id
+  ) {
+    window.location.href =
+      `match.html?id=${encodeURIComponent(id)}`;
+  }
+}
+
+document
+  .querySelectorAll(".tabs button")
+  .forEach(button => {
+
+    button.onclick = () => {
+
+      document
+        .querySelectorAll(".tabs button")
+        .forEach(item =>
+          item.classList.remove("active")
+        );
+
+      button.classList.add("active");
+
+      filter =
+        button.dataset.filter || "all";
+
+      render();
+    };
+
+  });
+
+// Load immediately
+load();
+
+// Refresh every 30 seconds
+setInterval(load, 30000);
