@@ -5,7 +5,7 @@ async function load() {
   let savedMatches = [];
   let apiMatches = [];
 
-  // Load manually added matches from Supabase
+  // LOAD MANUALLY ADDED MATCHES
   try {
     savedMatches = await getMatches();
 
@@ -13,10 +13,13 @@ async function load() {
       savedMatches = [];
     }
   } catch (error) {
-    console.error("Failed to load saved matches:", error);
+    console.error(
+      "Failed to load saved matches:",
+      error
+    );
   }
 
-  // Load matches from APIFootball
+  // LOAD API FOOTBALL MATCHES
   try {
     const response = await fetch(
       `/api/live-scores?t=${Date.now()}`
@@ -24,30 +27,43 @@ async function load() {
 
     const data = await response.json();
 
-    console.log("Live scores API response:", data);
+    console.log(
+      "Football API response:",
+      data
+    );
 
     if (!response.ok) {
       throw new Error(
-        data.error || "Failed to load API matches"
+        data.error ||
+        "Failed to load API matches"
       );
     }
 
     if (Array.isArray(data.matches)) {
       apiMatches = data.matches;
     }
+
   } catch (error) {
-    console.error("Football API error:", error);
+    console.error(
+      "Football API error:",
+      error
+    );
   }
 
-  // Prevent duplicate matches
+  // PREVENT DUPLICATES
   const apiIds = new Set(
-    apiMatches.map(match => String(match.id))
+    apiMatches.map(match =>
+      String(match.id)
+    )
   );
 
   allMatches = [
     ...apiMatches,
-    ...savedMatches.filter(
-      match => !apiIds.has(String(match.id))
+
+    ...savedMatches.filter(match =>
+      !apiIds.has(
+        String(match.id)
+      )
     )
   ];
 
@@ -60,18 +76,21 @@ function render() {
 
   if (!container) {
     console.error(
-      'Element with id="matches" was not found.'
+      'Element with id="matches" not found.'
     );
+
     return;
   }
 
-  // Filter matches
+  // FILTER MATCHES
   const filteredMatches =
     allMatches.filter(match => {
-      return (
-        filter === "all" ||
-        match.status === filter
-      );
+
+      if (filter === "all") {
+        return true;
+      }
+
+      return match.status === filter;
     });
 
   if (filteredMatches.length === 0) {
@@ -80,18 +99,21 @@ function render() {
         No matches available.
       </p>
     `;
+
     return;
   }
 
-  // Group by country and league
+  // GROUP MATCHES
   const groups = {};
 
   filteredMatches.forEach(match => {
     const country =
-      match.country || "International";
+      match.country ||
+      "International";
 
     const league =
-      match.league || "Other Matches";
+      match.league ||
+      "Other Matches";
 
     const groupKey =
       `${country}__${league}`;
@@ -99,152 +121,200 @@ function render() {
     if (!groups[groupKey]) {
       groups[groupKey] = {
         country,
+
         countryFlag:
           match.countryFlag || "",
+
         league,
+
         leagueLogo:
           match.leagueLogo || "",
+
         matches: []
       };
     }
 
-    groups[groupKey].matches.push(match);
+    groups[groupKey]
+      .matches
+      .push(match);
   });
 
-  // Display matches
+  // CREATE HTML
   container.innerHTML =
     Object.values(groups)
-      .map(group => `
-        <section class="league">
+      .map(group => {
 
-          <div class="league-title">
+        return `
+          <section class="league">
 
-            ${
-              group.countryFlag
-                ? `
-                  <img
-                    src="${group.countryFlag}"
-                    class="country-flag"
-                    alt="${group.country}"
-                  >
-                `
-                : ""
-            }
+            <div class="league-title">
 
-            <div class="league-info">
-              <span class="country-name">
-                ${group.country}
-              </span>
+              ${
+                group.countryFlag
+                  ? `
+                    <img
+                      src="${group.countryFlag}"
+                      class="country-flag"
+                      alt=""
+                    >
+                  `
+                  : ""
+              }
 
-              <strong>
-                ${group.league}
-              </strong>
-            </div>
+              <div class="league-info">
 
-            ${
-              group.leagueLogo
-                ? `
-                  <img
-                    src="${group.leagueLogo}"
-                    class="league-logo"
-                    alt="${group.league}"
-                  >
-                `
-                : ""
-            }
+                <span class="country-name">
+                  ${group.country}
+                </span>
 
-          </div>
-
-          ${group.matches
-            .map(match => `
-              <div
-                class="match"
-                data-id="${match.id || ""}"
-                data-source="${match.source || ""}"
-                role="button"
-                tabindex="0"
-              >
-
-                <div
-                  class="status ${match.status || ""}"
-                >
-                  ${
-                    match.status === "live"
-                      ? `● ${match.time || "LIVE"}`
-                      : match.time || ""
-                  }
-                </div>
-
-                <div class="team">
-
-                  ${
-                    match.homeLogo
-                      ? `
-                        <img
-                          src="${match.homeLogo}"
-                          class="team-logo"
-                          alt="${match.home || ""}"
-                        >
-                      `
-                      : ""
-                  }
-
-                  <span>
-                    ${match.home || "Home"}
-                  </span>
-
-                </div>
-
-                <div class="score">
-                  ${
-                    match.status === "upcoming"
-                      ? "- - -"
-                      : `${match.hs ?? 0} - ${match.as ?? 0}`
-                  }
-                </div>
-
-                <div class="team">
-
-                  ${
-                    match.awayLogo
-                      ? `
-                        <img
-                          src="${match.awayLogo}"
-                          class="team-logo"
-                          alt="${match.away || ""}"
-                        >
-                      `
-                      : ""
-                  }
-
-                  <span>
-                    ${match.away || "Away"}
-                  </span>
-
-                </div>
+                <strong>
+                  ${group.league}
+                </strong>
 
               </div>
-            `)
-            .join("")}
 
-        </section>
-      `)
+              ${
+                group.leagueLogo
+                  ? `
+                    <img
+                      src="${group.leagueLogo}"
+                      class="league-logo"
+                      alt=""
+                    >
+                  `
+                  : ""
+              }
+
+            </div>
+
+            ${group.matches
+              .map(match => {
+
+                const isUpcoming =
+                  match.status ===
+                  "upcoming";
+
+                const score =
+                  isUpcoming
+                    ? "VS"
+                    : `${
+                        match.hs ?? 0
+                      } - ${
+                        match.as ?? 0
+                      }`;
+
+                return `
+                  <div
+                    class="match"
+                    data-id="${
+                      match.id || ""
+                    }"
+                    data-source="${
+                      match.source || ""
+                    }"
+                    role="button"
+                    tabindex="0"
+                  >
+
+                    <div
+                      class="status ${
+                        match.status || ""
+                      }"
+                    >
+
+                      ${
+                        match.status ===
+                        "live"
+                          ? `● ${
+                              match.time ||
+                              "LIVE"
+                            }`
+                          : match.time || ""
+                      }
+
+                    </div>
+
+                    <div class="team">
+
+                      ${
+                        match.homeLogo
+                          ? `
+                            <img
+                              src="${
+                                match.homeLogo
+                              }"
+                              class="team-logo"
+                              alt=""
+                            >
+                          `
+                          : ""
+                      }
+
+                      <span>
+                        ${
+                          match.home ||
+                          "Home"
+                        }
+                      </span>
+
+                    </div>
+
+                    <div class="score">
+                      ${score}
+                    </div>
+
+                    <div class="team">
+
+                      ${
+                        match.awayLogo
+                          ? `
+                            <img
+                              src="${
+                                match.awayLogo
+                              }"
+                              class="team-logo"
+                              alt=""
+                            >
+                          `
+                          : ""
+                      }
+
+                      <span>
+                        ${
+                          match.away ||
+                          "Away"
+                        }
+                      </span>
+
+                    </div>
+
+                  </div>
+                `;
+              })
+              .join("")}
+
+          </section>
+        `;
+      })
       .join("");
 
-  // Make API matches clickable
+  // MAKE MATCHES CLICKABLE
   document
     .querySelectorAll(".match")
     .forEach(element => {
 
-      const open = () => {
+      function open() {
         const id =
           element.dataset.id;
 
         const source =
           element.dataset.source;
 
-        openMatch(id, source);
-      };
+        openMatch(
+          id,
+          source
+        );
+      }
 
       element.addEventListener(
         "click",
@@ -254,38 +324,52 @@ function render() {
       element.addEventListener(
         "keydown",
         event => {
+
           if (
             event.key === "Enter" ||
             event.key === " "
           ) {
+            event.preventDefault();
+
             open();
           }
+
         }
       );
+
     });
 }
 
-function openMatch(id, source) {
-  // New APIFootball matches
+function openMatch(
+  id,
+  source
+) {
+
+  // APIFOOTBALL MATCH
   if (
     source === "apifootball" &&
     id
   ) {
+
     window.location.href =
-      `match.html?id=${encodeURIComponent(id)}`;
+      `match.html?id=${
+        encodeURIComponent(id)
+      }`;
 
     return;
   }
 
-  // Manually added matches
+  // MANUALLY ADDED MATCH
   console.log(
-    "No detail page available for this match."
+    "No details available for manually added match."
   );
 }
 
-// Filter buttons
+// FILTER BUTTONS
 document
-  .querySelectorAll(".tabs button")
+  .querySelectorAll(
+    ".tabs button"
+  )
   .forEach(button => {
 
     button.addEventListener(
@@ -293,11 +377,15 @@ document
       () => {
 
         document
-          .querySelectorAll(".tabs button")
+          .querySelectorAll(
+            ".tabs button"
+          )
           .forEach(item => {
+
             item.classList.remove(
               "active"
             );
+
           });
 
         button.classList.add(
@@ -311,10 +399,14 @@ document
         render();
       }
     );
+
   });
 
-// Load matches immediately
+// INITIAL LOAD
 load();
 
-// Refresh every 30 seconds
-setInterval(load, 30000);
+// REFRESH EVERY 30 SECONDS
+setInterval(
+  load,
+  30000
+);
