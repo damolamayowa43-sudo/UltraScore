@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ultrascore — Live Scores</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><div class="brand"><span>ULTRA</span>SCORE</div><nav><button class="active">Scores</button><button onclick="location.href='admin.html'">Admin</button></nav></header>
+<div class="layout">
+<aside><h3>SPORTS</h3><div class="sport active">⚽ Football</div><div class="sport">🏀 Basketball</div><div class="sport">🎾 Tennis</div><h3>POPULAR</h3><div>Premier League</div><div>Champions League</div><div>La Liga</div></aside>
+<main>
+<section class="hero"><div><small>LIVE SPORTS</small><h1>Every score. Every moment.</h1><p>Follow matches, fixtures and results in one place.</p></div><div class="pulse">● LIVE</div></section>
+<div class="tabs"><button data-filter="all" class="active">ALL</button><button data-filter="live">LIVE</button><button data-filter="upcoming">UPCOMING</button><button data-filter="finished">FINISHED</button></div>
+<div id="matches"></div>
+</main>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js"></script><script src="db.js"></script><script src="app.js"></script>
+</body></html>

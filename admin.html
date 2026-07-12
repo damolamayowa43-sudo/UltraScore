@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ultrascore Admin</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<header><div class="brand"><span>ULTRA</span>SCORE <small>ADMIN</small></div><nav><button onclick="location.href='index.html'">View site</button></nav></header>
+<div class="admin">
+<section class="panel">
+<h2>Match Manager</h2>
+<form id="matchForm">
+<input id="league" placeholder="League" required>
+<input id="home" placeholder="Home team" required>
+<input id="away" placeholder="Away team" required>
+<div class="row"><input id="homeScore" type="number" min="0" value="0"><input id="awayScore" type="number" min="0" value="0"></div>
+<select id="status"><option value="upcoming">Upcoming</option><option value="live">Live</option><option value="finished">Finished</option></select>
+<input id="time" placeholder="Time / minute (e.g. 20:00 or 67')">
+<button class="primary" type="submit">Add match</button>
+</form>
+<div id="adminMatches"></div>
+</section>
+<section class="panel ai">
+<h2>✨ Ultrascore AI Assistant</h2>
+<p class="muted">Type an instruction. This demo understands common match commands locally.</p>
+<div id="chat"><div class="bubble bot">Try: “Add Arsenal vs Chelsea, Premier League, 8 PM” or “Change Arsenal vs Chelsea to 2-1 and mark finished”.</div></div>
+<div class="chatbox"><input id="aiInput" placeholder="Tell Ultrascore AI what to do…"><button id="sendAI" class="primary">Send</button></div>
+</section>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js"></script><script src="db.js"></script><script src="admin.js"></script>
+</body></html>
