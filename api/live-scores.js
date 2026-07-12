@@ -1,6 +1,8 @@
 export default async function handler(req, res) {
   if (req.method !== "GET") {
-    return res.status(405).json({ error: "Method not allowed" });
+    return res.status(405).json({
+      error: "Method not allowed"
+    });
   }
 
   const key = process.env.API_FOOTBALL_KEY;
@@ -16,45 +18,41 @@ export default async function handler(req, res) {
   };
 
   try {
-    // First try all currently live matches
-    let response = await fetch(
-      "https://v3.football.api-sports.io/fixtures?live=all",
-      { headers }
+    const today = new Date().toISOString().split("T")[0];
+
+    const response = await fetch(
+      `https://v3.football.api-sports.io/fixtures?date=${today}&timezone=UTC`,
+      {
+        headers
+      }
     );
 
-    let data = await response.json();
+    const data = await response.json();
 
     if (!response.ok) {
-      return res.status(response.status).json(data);
+      return res.status(response.status).json({
+        error: "API-Football request failed",
+        apiResponse: data
+      });
     }
 
-    let fixtures = data.response || [];
-
-    // If there are no live matches, get today's fixtures
-    if (fixtures.length === 0) {
-      const today = new Date().toISOString().split("T")[0];
-
-      response = await fetch(
-        `https://v3.football.api-sports.io/fixtures?date=${today}&timezone=UTC`,
-        { headers }
-      );
-
-      data = await response.json();
-
-      if (!response.ok) {
-        return res.status(response.status).json(data);
-      }
-
-      fixtures = data.response || [];
-    }
+    const fixtures = data.response || [];
 
     const liveStatuses = [
-      "1H", "HT", "2H", "ET",
-      "BT", "P", "INT", "SUSP"
+      "1H",
+      "HT",
+      "2H",
+      "ET",
+      "BT",
+      "P",
+      "INT",
+      "SUSP"
     ];
 
     const finishedStatuses = [
-      "FT", "AET", "PEN"
+      "FT",
+      "AET",
+      "PEN"
     ];
 
     const matches = fixtures.map(x => {
@@ -92,14 +90,21 @@ export default async function handler(req, res) {
 
         league: x.league.name,
         leagueLogo: x.league.logo || "",
-        country: x.league.country || "International",
-        countryFlag: x.league.flag || "",
+
+        country:
+          x.league.country ||
+          "International",
+
+        countryFlag:
+          x.league.flag || "",
 
         home: x.teams.home.name,
-        homeLogo: x.teams.home.logo || "",
+        homeLogo:
+          x.teams.home.logo || "",
 
         away: x.teams.away.name,
-        awayLogo: x.teams.away.logo || "",
+        awayLogo:
+          x.teams.away.logo || "",
 
         hs: x.goals.home ?? 0,
         as: x.goals.away ?? 0,
@@ -109,6 +114,7 @@ export default async function handler(req, res) {
 
         fixtureStatus: short,
         kickoff: x.fixture.date,
+
         source: "api-football"
       };
     });
@@ -120,28 +126,57 @@ export default async function handler(req, res) {
     };
 
     matches.sort((a, b) => {
-      if (order[a.status] !== order[b.status]) {
-        return order[a.status] - order[b.status];
+      if (
+        order[a.status] !==
+        order[b.status]
+      ) {
+        return (
+          order[a.status] -
+          order[b.status]
+        );
       }
 
-      return new Date(a.kickoff) - new Date(b.kickoff);
+      return (
+        new Date(a.kickoff) -
+        new Date(b.kickoff)
+      );
     });
 
     res.setHeader(
       "Cache-Control",
-      "s-maxage=10, stale-while-revalidate=20"
+      "no-store"
     );
 
     return res.status(200).json({
-      matches,
-      count: matches.length
+      dateRequested: today,
+
+      apiErrors:
+        data.errors || {},
+
+      apiResults:
+        data.results ?? null,
+
+      apiParameters:
+        data.parameters || {},
+
+      responseCount:
+        fixtures.length,
+
+      matches
     });
 
   } catch (error) {
-    console.error("Live scores error:", error);
+    console.error(
+      "Live scores error:",
+      error
+    );
 
     return res.status(500).json({
-      error: "Failed to load football matches"
+      error:
+        "Failed to load football matches",
+
+      message:
+        error.message
     });
   }
 }
