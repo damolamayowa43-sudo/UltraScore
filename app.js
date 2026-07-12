@@ -10,7 +10,6 @@ async function load() {
     if (response.ok) {
       const data = await response.json();
       const apiMatches = data.matches || [];
-
       const apiIds = new Set(apiMatches.map(match => match.id));
 
       allMatches = [
@@ -58,10 +57,10 @@ function render() {
           ${
             group.countryFlag
               ? `<img
-                   src="${group.countryFlag}"
-                   class="country-flag"
-                   alt="${group.country}"
-                 >`
+                  src="${group.countryFlag}"
+                  class="country-flag"
+                  alt="${group.country}">
+                `
               : ""
           }
 
@@ -70,64 +69,71 @@ function render() {
               ${group.country}
             </span>
 
-            <strong>
-              ${group.league}
-            </strong>
+            <strong>${group.league}</strong>
           </div>
 
           ${
             group.leagueLogo
               ? `<img
-                   src="${group.leagueLogo}"
-                   class="league-logo"
-                   alt="${group.league}"
-                 >`
+                  src="${group.leagueLogo}"
+                  class="league-logo"
+                  alt="${group.league}">
+                `
               : ""
           }
 
         </div>
 
-        ${group.matches.map(match => `
-          <div class="match">
+        ${group.matches.map(m => `
+          <div
+            class="match"
+            onclick="openMatch('${m.id}', '${m.source || ""}')"
+            role="button"
+            tabindex="0"
+          >
 
-            <div class="status ${match.status}">
+            <div class="status ${m.status}">
               ${
-                match.status === "live"
-                  ? "● " + match.time
-                  : match.time
+                m.status === "live"
+                  ? "● " + m.time
+                  : m.time
               }
             </div>
 
             <div class="team">
+
               ${
-                match.homeLogo
+                m.homeLogo
                   ? `<img
-                       src="${match.homeLogo}"
-                       class="team-logo"
-                       alt="${match.home}"
-                     >`
+                      src="${m.homeLogo}"
+                      class="team-logo"
+                      alt="${m.home}">
+                    `
                   : ""
               }
 
-              <span>${match.home}</span>
+              <span>${m.home}</span>
+
             </div>
 
             <div class="score">
-              ${match.hs} - ${match.as}
+              ${m.hs} - ${m.as}
             </div>
 
             <div class="team">
+
               ${
-                match.awayLogo
+                m.awayLogo
                   ? `<img
-                       src="${match.awayLogo}"
-                       class="team-logo"
-                       alt="${match.away}"
-                     >`
+                      src="${m.awayLogo}"
+                      class="team-logo"
+                      alt="${m.away}">
+                    `
                   : ""
               }
 
-              <span>${match.away}</span>
+              <span>${m.away}</span>
+
             </div>
 
           </div>
@@ -138,27 +144,6 @@ function render() {
     `<p class="muted">No matches available.</p>`;
 }
 
-document
-  .querySelectorAll(".tabs button")
-  .forEach(button => {
-
-    button.onclick = () => {
-
-      document
-        .querySelectorAll(".tabs button")
-        .forEach(item =>
-          item.classList.remove("active")
-        );
-
-      button.classList.add("active");
-
-      filter = button.dataset.filter;
-
-      render();
-    };
-  });
-
-load();
-
-/* Refresh scores every 30 seconds */
-setInterval(load, 30000);
+function openMatch(id, source) {
+  /* Only API-Football matches have API detail pages */
+  if (source
