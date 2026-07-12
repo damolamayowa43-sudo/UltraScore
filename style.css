@@ -1,1 +1,23 @@
 *{box-sizing:border-box}body{margin:0;background:#070b12;color:#edf4ff;font-family:Inter,Arial,sans-serif}header{height:66px;background:#0b111c;border-bottom:1px solid #1a2638;display:flex;align-items:center;justify-content:space-between;padding:0 5%;position:sticky;top:0;z-index:5}.brand{font-size:23px;font-weight:900;letter-spacing:-1px}.brand span{color:#1687ff}.brand small{font-size:10px;background:#1687ff;padding:4px 7px;border-radius:5px;margin-left:6px}button{background:transparent;border:0;color:#9cadc4;padding:11px 15px;cursor:pointer;font-weight:700}.active{color:#fff!important;background:#10233d!important;border-radius:8px}.layout{display:grid;grid-template-columns:220px 1fr;max-width:1250px;margin:auto}aside{padding:28px 20px;border-right:1px solid #172235;min-height:calc(100vh - 66px);color:#91a2b9}aside h3{font-size:11px;color:#52657e;margin-top:24px}aside div{padding:11px;margin:4px 0;border-radius:8px}.sport.active{background:#10233d;color:#42a1ff}main{padding:30px}.hero{background:linear-gradient(120deg,#0d1b2e,#092e5d);border:1px solid #174a7e;border-radius:18px;padding:28px;display:flex;justify-content:space-between;align-items:center}.hero small{color:#4ca8ff;font-weight:900}.hero h1{margin:8px 0;font-size:32px}.hero p,.muted{color:#8fa1b9}.pulse{color:#36a1ff;font-weight:900}.tabs{display:flex;gap:8px;margin:25px 0}.league{background:#0d1420;border:1px solid #192538;border-radius:13px;margin-bottom:15px;overflow:hidden}.league-title{padding:13px 17px;background:#111b2a;font-weight:800;color:#b8c9de}.match{display:grid;grid-template-columns:100px 1fr 70px 1fr;align-items:center;padding:15px 17px;border-top:1px solid #182337}.match .team:last-child{text-align:right}.score{text-align:center;font-size:20px;font-weight:900}.status.live{color:#42a1ff}.status.finished{color:#71839a}.admin{max-width:1150px;margin:30px auto;padding:0 20px;display:grid;grid-template-columns:1fr 1fr;gap:20px}.panel{background:#0d1420;border:1px solid #1a293d;border-radius:16px;padding:22px}form{display:grid;gap:10px}input,select{width:100%;background:#080d15;border:1px solid #22334b;color:white;border-radius:9px;padding:13px;outline:none}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.primary{background:#087ef5;color:white;border-radius:9px}.admin-match{padding:13px 0;border-bottom:1px solid #1a2638;display:flex;justify-content:space-between;gap:10px}.danger{color:#ff6470}.ai{display:flex;flex-direction:column}.ai h2{margin-bottom:3px}#chat{height:390px;overflow:auto;padding:10px 0}.bubble{max-width:85%;padding:12px 14px;border-radius:13px;margin:9px 0;line-height:1.45}.bot{background:#142238}.user{background:#087ef5;margin-left:auto}.chatbox{display:grid;grid-template-columns:1fr auto;gap:8px}@media(max-width:760px){.layout{display:block}aside{display:none}main{padding:15px}.hero h1{font-size:25px}.match{grid-template-columns:70px 1fr 55px 1fr;font-size:13px}.admin{grid-template-columns:1fr}.panel{padding:16px}header{padding:0 16px}}
+/* Logo sizing */
+.league-title img{
+  width:28px;
+  height:28px;
+  object-fit:contain;
+  vertical-align:middle;
+  margin-right:8px;
+}
+
+.team img{
+  width:36px;
+  height:36px;
+  object-fit:contain;
+  display:block;
+  margin:0 auto 5px;
+}
+
+.team{
+  min-width:0;
+  overflow:hidden;
+  text-align:center;
+}
