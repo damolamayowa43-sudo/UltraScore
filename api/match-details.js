@@ -1,177 +1,254 @@
 export default async function handler(req, res) {
   if (req.method !== "GET") {
-    return res.status(405).json({ error: "Method not allowed" });
+    return res.status(405).json({
+      error: "Method not allowed"
+    });
   }
 
   const id = req.query.id;
-  const key = process.env.API_FOOTBALL_KEY;
+  const key = process.env.FOOTBALL_API_KEY;
 
   if (!id) {
-    return res.status(400).json({ error: "Match ID is required" });
+    return res.status(400).json({
+      error: "Match ID is required"
+    });
   }
 
   if (!key) {
     return res.status(500).json({
-      error: "API_FOOTBALL_KEY is not configured"
+      error: "FOOTBALL_API_KEY is not configured"
     });
   }
 
   try {
-    const headers = {
-      "x-apisports-key": key
-    };
+    const url =
+      `https://apiv3.apifootball.com/` +
+      `?action=get_events` +
+      `&match_id=${encodeURIComponent(id)}` +
+      `&APIkey=${encodeURIComponent(key)}`;
 
-    const [fixtureResponse, statsResponse] = await Promise.all([
-      fetch(
-        `https://v3.football.api-sports.io/fixtures?id=${encodeURIComponent(id)}`,
-        { headers }
-      ),
-      fetch(
-        `https://v3.football.api-sports.io/fixtures/statistics?fixture=${encodeURIComponent(id)}`,
-        { headers }
-      )
-    ]);
+    const response = await fetch(url);
+    const data = await response.json();
 
-    const fixtureData = await fixtureResponse.json();
-    const statsData = await statsResponse.json();
-
-    if (!fixtureResponse.ok) {
-      return res.status(fixtureResponse.status).json(fixtureData);
+    if (!response.ok) {
+      return res.status(response.status).json({
+        error: "Football API request failed"
+      });
     }
 
-    const x = fixtureData.response?.[0];
-
-    if (!x) {
-      return res.status(404).json({ error: "Match not found" });
+    if (!Array.isArray(data) || !data[0]) {
+      return res.status(404).json({
+        error: "Match not found",
+        apiResponse: data
+      });
     }
 
-    const statusMap = {
-      NS: "upcoming",
-      TBD: "upcoming",
-      "1H": "live",
-      HT: "live",
-      "2H": "live",
-      ET: "live",
-      BT: "live",
-      P: "live",
-      SUSP: "live",
-      INT: "live",
-      FT: "finished",
-      AET: "finished",
-      PEN: "finished"
-    };
+    const x = data[0];
 
-    const events = (x.events || []).map(event => {
-      let icon = "•";
+    // ---------- STATUS ----------
 
-      if (event.type === "Goal") {
-        icon = "⚽";
-      } else if (event.type === "Card") {
-        icon =
-          event.detail === "Red Card" ? "🟥" : "🟨";
-      } else if (event.type === "subst") {
-        icon = "🔄";
-      } else if (event.type === "Var") {
-        icon = "📺";
-      }
+    const rawStatus = String(
+      x.match_status || ""
+    ).toLowerCase();
 
-      return {
-        time:
-          event.time?.elapsed != null
-            ? `${event.time.elapsed}${
-                event.time.extra
-                  ? `+${event.time.extra}`
-                  : ""
-              }'`
+    let status = "upcoming";
+
+    if (
+      rawStatus.includes("finished") ||
+      rawStatus === "ft"
+    ) {
+      status = "finished";
+    } else if (
+      rawStatus &&
+      rawStatus !== "not started" &&
+      rawStatus !== "ns"
+    ) {
+      status = "live";
+    }
+
+    // ---------- EVENTS ----------
+
+    const events = [];
+
+    // Goals
+    if (Array.isArray(x.goalscorer)) {
+      x.goalscorer.forEach(event => {
+        const isHome =
+          event.home_scorer ||
+          event.home_scorer_id;
+
+        const player =
+          event.home_scorer ||
+          event.away_scorer ||
+          "";
+
+        const assist =
+          event.home_assist ||
+          event.away_assist ||
+          "";
+
+        events.push({
+          time: event.time
+            ? `${event.time}'`
             : "",
 
-        team: event.team?.name || "",
-        teamLogo: event.team?.logo || "",
-        player: event.player?.name || "",
-        assist: event.assist?.name || "",
-        type: event.type || "",
-        detail: event.detail || "",
-        comments: event.comments || "",
-        icon
-      };
+          team: isHome
+            ? x.match_hometeam_name
+            : x.match_awayteam_name,
+
+          teamLogo: isHome
+            ? x.team_home_badge || ""
+            : x.team_away_badge || "",
+
+          player,
+          assist,
+
+          type: "Goal",
+          detail: "Goal",
+          comments: event.score || "",
+          icon: "⚽"
+        });
+      });
+    }
+
+    // Cards
+    if (Array.isArray(x.cards)) {
+      x.cards.forEach(event => {
+        const isHome =
+          event.home_fault ||
+          event.home_player_id;
+
+        const player =
+          event.home_fault ||
+          event.away_fault ||
+          "";
+
+        const cardType =
+          event.card || "Card";
+
+        events.push({
+          time: event.time
+            ? `${event.time}'`
+            : "",
+
+          team: isHome
+            ? x.match_hometeam_name
+            : x.match_awayteam_name,
+
+          teamLogo: isHome
+            ? x.team_home_badge || ""
+            : x.team_away_badge || "",
+
+          player,
+          assist: "",
+          type: "Card",
+          detail: cardType,
+          comments: "",
+          icon: String(cardType)
+            .toLowerCase()
+            .includes("red")
+              ? "🟥"
+              : "🟨"
+        });
+      });
+    }
+
+    // Sort events by minute
+    events.sort((a, b) => {
+      return (
+        parseInt(a.time) || 0
+      ) - (
+        parseInt(b.time) || 0
+      );
     });
 
-    const rawStats = statsResponse.ok
-      ? statsData.response || []
+    // ---------- STATISTICS ----------
+
+    const statistics = Array.isArray(x.statistics)
+      ? x.statistics.map(stat => ({
+          type:
+            stat.type ||
+            stat.statistic_name ||
+            "Statistic",
+
+          home:
+            stat.home ??
+            stat.home_value ??
+            "-",
+
+          away:
+            stat.away ??
+            stat.away_value ??
+            "-"
+        }))
       : [];
 
-    const getStat = (teamData, type) => {
-      const stat = teamData?.statistics?.find(
-        item => item.type === type
-      );
-
-      return stat?.value ?? "-";
-    };
-
-    const homeStats = rawStats.find(
-      team => team.team?.id === x.teams.home.id
-    );
-
-    const awayStats = rawStats.find(
-      team => team.team?.id === x.teams.away.id
-    );
-
-    const statTypes = [
-      "Ball Possession",
-      "Total Shots",
-      "Shots on Goal",
-      "Shots off Goal",
-      "Blocked Shots",
-      "Corner Kicks",
-      "Fouls",
-      "Yellow Cards",
-      "Red Cards",
-      "Goalkeeper Saves",
-      "Total passes",
-      "Passes accurate"
-    ];
-
-    const statistics = statTypes.map(type => ({
-      type,
-      home: getStat(homeStats, type),
-      away: getStat(awayStats, type)
-    }));
+    // ---------- MATCH ----------
 
     const match = {
-      id: x.fixture.id,
+      id: x.match_id,
 
-      league: x.league.name,
-      country: x.league.country,
-      leagueLogo: x.league.logo,
+      league:
+        x.league_name ||
+        "Unknown League",
 
-      home: x.teams.home.name,
-      away: x.teams.away.name,
+      country:
+        x.country_name ||
+        "",
 
-      homeLogo: x.teams.home.logo,
-      awayLogo: x.teams.away.logo,
+      leagueLogo:
+        x.league_logo ||
+        "",
 
-      hs: x.goals.home ?? 0,
-      as: x.goals.away ?? 0,
+      home:
+        x.match_hometeam_name ||
+        "Home",
 
-      status:
-        statusMap[x.fixture.status.short] ||
-        "upcoming",
+      away:
+        x.match_awayteam_name ||
+        "Away",
+
+      homeLogo:
+        x.team_home_badge ||
+        "",
+
+      awayLogo:
+        x.team_away_badge ||
+        "",
+
+      hs:
+        x.match_hometeam_score !== ""
+          ? Number(x.match_hometeam_score)
+          : 0,
+
+      as:
+        x.match_awayteam_score !== ""
+          ? Number(x.match_awayteam_score)
+          : 0,
+
+      status,
 
       statusText:
-        x.fixture.status.long ||
-        x.fixture.status.short,
+        x.match_status ||
+        (status === "upcoming"
+          ? "Not Started"
+          : status),
 
       time:
-        x.fixture.status.elapsed != null
-          ? `${x.fixture.status.elapsed}'`
-          : "",
+        status === "finished"
+          ? "FT"
+          : status === "live"
+          ? x.match_status || "LIVE"
+          : x.match_time || "",
 
       venue:
-        x.fixture.venue?.name ||
+        x.match_stadium ||
         "Not available",
 
       events,
-      statistics
+      statistics,
+
+      source: "apifootball"
     };
 
     res.setHeader(
@@ -179,13 +256,19 @@ export default async function handler(req, res) {
       "s-maxage=10, stale-while-revalidate=20"
     );
 
-    return res.status(200).json({ match });
+    return res.status(200).json({
+      match
+    });
 
   } catch (error) {
-    console.error("Match details error:", error);
+    console.error(
+      "Match details error:",
+      error
+    );
 
     return res.status(500).json({
-      error: "Failed to load match details"
+      error: "Failed to load match details",
+      message: error.message
     });
   }
-}
+      }
