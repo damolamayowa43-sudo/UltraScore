@@ -53,13 +53,58 @@ async function loadMatch() {
       return;
     }
 
+    const events = m.events || [];
+
+    const timeline = events.length
+      ? events.map(event => `
+          <div class="timeline-event">
+
+            <div class="event-time">
+              ${event.time || ""}
+            </div>
+
+            <div class="event-icon">
+              ${event.icon || "•"}
+            </div>
+
+            <div class="event-content">
+              <strong>
+                ${event.player || event.team || "Match event"}
+              </strong>
+
+              <span>
+                ${event.detail || event.type || ""}
+              </span>
+
+              ${
+                event.assist
+                  ? `<small>Assist: ${event.assist}</small>`
+                  : ""
+              }
+
+              ${
+                event.team
+                  ? `<small>${event.team}</small>`
+                  : ""
+              }
+            </div>
+
+          </div>
+        `).join("")
+      : `
+          <p class="muted no-events">
+            No match events available yet.
+          </p>
+        `;
+
     container.innerHTML = `
       <section class="details-card">
 
         <div class="details-league">
-          ${m.leagueLogo
-            ? `<img src="${m.leagueLogo}" alt="">`
-            : ""
+          ${
+            m.leagueLogo
+              ? `<img src="${m.leagueLogo}" alt="${m.league || ""}">`
+              : ""
           }
 
           <div>
@@ -69,16 +114,26 @@ async function loadMatch() {
         </div>
 
         <div class="details-status">
-          ${m.status === "live" ? "● LIVE" : m.statusText || ""}
-          ${m.time ? ` • ${m.time}` : ""}
+          ${
+            m.status === "live"
+              ? "● LIVE"
+              : m.statusText || ""
+          }
+
+          ${
+            m.time
+              ? ` • ${m.time}`
+              : ""
+          }
         </div>
 
         <div class="details-teams">
 
           <div class="details-team">
-            ${m.homeLogo
-              ? `<img src="${m.homeLogo}" alt="${m.home}">`
-              : ""
+            ${
+              m.homeLogo
+                ? `<img src="${m.homeLogo}" alt="${m.home}">`
+                : ""
             }
             <h3>${m.home}</h3>
           </div>
@@ -88,9 +143,10 @@ async function loadMatch() {
           </div>
 
           <div class="details-team">
-            ${m.awayLogo
-              ? `<img src="${m.awayLogo}" alt="${m.away}">`
-              : ""
+            ${
+              m.awayLogo
+                ? `<img src="${m.awayLogo}" alt="${m.away}">`
+                : ""
             }
             <h3>${m.away}</h3>
           </div>
@@ -115,17 +171,24 @@ async function loadMatch() {
         </div>
 
       </section>
+
+      <section class="timeline-card">
+        <h2>Match Events</h2>
+        <div class="timeline">
+          ${timeline}
+        </div>
+      </section>
     `;
 
   } catch (error) {
     console.error(error);
+
     container.innerHTML =
       "<p class='muted'>Unable to load match details.</p>";
   }
 }
 
 loadMatch();
-
 setInterval(loadMatch, 30000);
 </script>
 
