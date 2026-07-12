@@ -2,65 +2,79 @@ let filter = "all";
 let allMatches = [];
 
 async function load() {
+  let savedMatches = [];
+  let apiMatches = [];
+
+  // Load manually added matches from Supabase
   try {
-    // Load manually added matches
-    let savedMatches = [];
+    savedMatches = await getMatches();
 
-    try {
-      savedMatches = await getMatches();
-    } catch (error) {
-      console.error("Saved matches error:", error);
+    if (!Array.isArray(savedMatches)) {
+      savedMatches = [];
     }
+  } catch (error) {
+    console.error("Failed to load saved matches:", error);
+  }
 
-    // Load matches from the new API
+  // Load matches from APIFootball
+  try {
     const response = await fetch(
-      "/api/live-scores?t=" + Date.now()
+      `/api/live-scores?t=${Date.now()}`
     );
 
     const data = await response.json();
 
-    console.log("Football API response:", data);
+    console.log("Live scores API response:", data);
 
     if (!response.ok) {
       throw new Error(
-        data.error || "Football API failed"
+        data.error || "Failed to load API matches"
       );
     }
 
-    const apiMatches = Array.isArray(data.matches)
-      ? data.matches
-      : [];
-
-    allMatches = [
-      ...apiMatches,
-      ...savedMatches
-    ];
-
-  } catch (error) {
-    console.error("Failed to load API matches:", error);
-
-    // Keep manually added matches visible
-    try {
-      allMatches = await getMatches();
-    } catch {
-      allMatches = [];
+    if (Array.isArray(data.matches)) {
+      apiMatches = data.matches;
     }
+  } catch (error) {
+    console.error("Football API error:", error);
   }
+
+  // Prevent duplicate matches
+  const apiIds = new Set(
+    apiMatches.map(match => String(match.id))
+  );
+
+  allMatches = [
+    ...apiMatches,
+    ...savedMatches.filter(
+      match => !apiIds.has(String(match.id))
+    )
+  ];
 
   render();
 }
 
 function render() {
-  const container = document.getElementById("matches");
+  const container =
+    document.getElementById("matches");
 
-  if (!container) return;
+  if (!container) {
+    console.error(
+      'Element with id="matches" was not found.'
+    );
+    return;
+  }
 
-  const filtered = allMatches.filter(match =>
-    filter === "all" ||
-    match.status === filter
-  );
+  // Filter matches
+  const filteredMatches =
+    allMatches.filter(match => {
+      return (
+        filter === "all" ||
+        match.status === filter
+      );
+    });
 
-  if (filtered.length === 0) {
+  if (filteredMatches.length === 0) {
     container.innerHTML = `
       <p class="muted">
         No matches available.
@@ -69,165 +83,238 @@ function render() {
     return;
   }
 
+  // Group by country and league
   const groups = {};
 
-  filtered.forEach(match => {
+  filteredMatches.forEach(match => {
     const country =
       match.country || "International";
 
     const league =
       match.league || "Other Matches";
 
-    const key = `${country}__${league}`;
+    const groupKey =
+      `${country}__${league}`;
 
-    if (!groups[key]) {
-      groups[key] = {
+    if (!groups[groupKey]) {
+      groups[groupKey] = {
         country,
-        countryFlag: match.countryFlag || "",
+        countryFlag:
+          match.countryFlag || "",
         league,
-        leagueLogo: match.leagueLogo || "",
+        leagueLogo:
+          match.leagueLogo || "",
         matches: []
       };
     }
 
-    groups[key].matches.push(match);
+    groups[groupKey].matches.push(match);
   });
 
-  container.innerHTML = Object.values(groups)
-    .map(group => `
-      <section class="league">
+  // Display matches
+  container.innerHTML =
+    Object.values(groups)
+      .map(group => `
+        <section class="league">
 
-        <div class="league-title">
+          <div class="league-title">
 
-          ${
-            group.countryFlag
-              ? `<img
-                   src="${group.countryFlag}"
-                   class="country-flag"
-                   alt=""
-                 >`
-              : ""
-          }
+            ${
+              group.countryFlag
+                ? `
+                  <img
+                    src="${group.countryFlag}"
+                    class="country-flag"
+                    alt="${group.country}"
+                  >
+                `
+                : ""
+            }
 
-          <div class="league-info">
-            <span class="country-name">
-              ${group.country}
-            </span>
+            <div class="league-info">
+              <span class="country-name">
+                ${group.country}
+              </span>
 
-            <strong>
-              ${group.league}
-            </strong>
+              <strong>
+                ${group.league}
+              </strong>
+            </div>
+
+            ${
+              group.leagueLogo
+                ? `
+                  <img
+                    src="${group.leagueLogo}"
+                    class="league-logo"
+                    alt="${group.league}"
+                  >
+                `
+                : ""
+            }
+
           </div>
 
-          ${
-            group.leagueLogo
-              ? `<img
-                   src="${group.leagueLogo}"
-                   class="league-logo"
-                   alt=""
-                 >`
-              : ""
-          }
+          ${group.matches
+            .map(match => `
+              <div
+                class="match"
+                data-id="${match.id || ""}"
+                data-source="${match.source || ""}"
+                role="button"
+                tabindex="0"
+              >
 
-        </div>
+                <div
+                  class="status ${match.status || ""}"
+                >
+                  ${
+                    match.status === "live"
+                      ? `● ${match.time || "LIVE"}`
+                      : match.time || ""
+                  }
+                </div>
 
-        ${group.matches.map(m => `
-          <div
-            class="match"
-            data-id="${m.id || ""}"
-            data-source="${m.source || ""}"
-          >
+                <div class="team">
 
-            <div class="status ${m.status || ""}">
-              ${
-                m.status === "live"
-                  ? `● ${m.time || "LIVE"}`
-                  : m.time || ""
-              }
-            </div>
+                  ${
+                    match.homeLogo
+                      ? `
+                        <img
+                          src="${match.homeLogo}"
+                          class="team-logo"
+                          alt="${match.home || ""}"
+                        >
+                      `
+                      : ""
+                  }
 
-            <div class="team">
-              ${
-                m.homeLogo
-                  ? `<img
-                       src="${m.homeLogo}"
-                       class="team-logo"
-                       alt=""
-                     >`
-                  : ""
-              }
+                  <span>
+                    ${match.home || "Home"}
+                  </span>
 
-              <span>${m.home || ""}</span>
-            </div>
+                </div>
 
-            <div class="score">
-              ${m.hs ?? "-"} - ${m.as ?? "-"}
-            </div>
+                <div class="score">
+                  ${
+                    match.status === "upcoming"
+                      ? "- - -"
+                      : `${match.hs ?? 0} - ${match.as ?? 0}`
+                  }
+                </div>
 
-            <div class="team">
-              ${
-                m.awayLogo
-                  ? `<img
-                       src="${m.awayLogo}"
-                       class="team-logo"
-                       alt=""
-                     >`
-                  : ""
-              }
+                <div class="team">
 
-              <span>${m.away || ""}</span>
-            </div>
+                  ${
+                    match.awayLogo
+                      ? `
+                        <img
+                          src="${match.awayLogo}"
+                          class="team-logo"
+                          alt="${match.away || ""}"
+                        >
+                      `
+                      : ""
+                  }
 
-          </div>
-        `).join("")}
+                  <span>
+                    ${match.away || "Away"}
+                  </span>
 
-      </section>
-    `).join("");
+                </div>
 
+              </div>
+            `)
+            .join("")}
+
+        </section>
+      `)
+      .join("");
+
+  // Make API matches clickable
   document
     .querySelectorAll(".match")
     .forEach(element => {
 
-      element.onclick = () => {
-        const id = element.dataset.id;
-        const source = element.dataset.source;
+      const open = () => {
+        const id =
+          element.dataset.id;
+
+        const source =
+          element.dataset.source;
 
         openMatch(id, source);
       };
 
+      element.addEventListener(
+        "click",
+        open
+      );
+
+      element.addEventListener(
+        "keydown",
+        event => {
+          if (
+            event.key === "Enter" ||
+            event.key === " "
+          ) {
+            open();
+          }
+        }
+      );
     });
 }
 
 function openMatch(id, source) {
-  // Correct source name for your NEW API
-  if (source === "apifootball" && id) {
+  // New APIFootball matches
+  if (
+    source === "apifootball" &&
+    id
+  ) {
     window.location.href =
       `match.html?id=${encodeURIComponent(id)}`;
+
+    return;
   }
+
+  // Manually added matches
+  console.log(
+    "No detail page available for this match."
+  );
 }
 
+// Filter buttons
 document
   .querySelectorAll(".tabs button")
   .forEach(button => {
 
-    button.onclick = () => {
+    button.addEventListener(
+      "click",
+      () => {
 
-      document
-        .querySelectorAll(".tabs button")
-        .forEach(item =>
-          item.classList.remove("active")
+        document
+          .querySelectorAll(".tabs button")
+          .forEach(item => {
+            item.classList.remove(
+              "active"
+            );
+          });
+
+        button.classList.add(
+          "active"
         );
 
-      button.classList.add("active");
+        filter =
+          button.dataset.filter ||
+          "all";
 
-      filter =
-        button.dataset.filter || "all";
-
-      render();
-    };
-
+        render();
+      }
+    );
   });
 
+// Load matches immediately
 load();
 
+// Refresh every 30 seconds
 setInterval(load, 30000);
