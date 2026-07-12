@@ -1,4 +1,6 @@
-*{box-sizing:border-box}
+*{
+  box-sizing:border-box;
+}
 
 body{
   margin:0;
@@ -6,6 +8,8 @@ body{
   color:#edf4ff;
   font-family:Inter,Arial,sans-serif;
 }
+
+/* HEADER */
 
 header{
   height:66px;
@@ -17,11 +21,18 @@ header{
   padding:0 5%;
   position:sticky;
   top:0;
-  z-index:5;
+  z-index:100;
 }
 
-.brand{font-size:23px;font-weight:900;letter-spacing:-1px}
-.brand span{color:#1687ff}
+.brand{
+  font-size:23px;
+  font-weight:900;
+  letter-spacing:-1px;
+}
+
+.brand span{
+  color:#1687ff;
+}
 
 .brand small{
   font-size:10px;
@@ -30,6 +41,8 @@ header{
   border-radius:5px;
   margin-left:6px;
 }
+
+/* BUTTONS */
 
 button{
   background:transparent;
@@ -40,15 +53,18 @@ button{
   font-weight:700;
 }
 
+button.active,
 .active{
-  color:#fff!important;
-  background:#10233d!important;
+  color:#fff !important;
+  background:#10233d !important;
   border-radius:8px;
 }
 
+/* MAIN LAYOUT */
+
 .layout{
   display:grid;
-  grid-template-columns:220px 1fr;
+  grid-template-columns:220px minmax(0,1fr);
   max-width:1250px;
   margin:auto;
 }
@@ -77,7 +93,12 @@ aside div{
   color:#42a1ff;
 }
 
-main{padding:30px}
+main{
+  min-width:0;
+  padding:30px;
+}
+
+/* HERO */
 
 .hero{
   background:linear-gradient(120deg,#0d1b2e,#092e5d);
@@ -87,18 +108,44 @@ main{padding:30px}
   display:flex;
   justify-content:space-between;
   align-items:center;
+  gap:20px;
 }
 
-.hero small{color:#4ca8ff;font-weight:900}
-.hero h1{margin:8px 0;font-size:32px}
-.hero p,.muted{color:#8fa1b9}
-.pulse{color:#36a1ff;font-weight:900}
+.hero small{
+  color:#4ca8ff;
+  font-weight:900;
+}
+
+.hero h1{
+  margin:8px 0;
+  font-size:32px;
+}
+
+.hero p,
+.muted{
+  color:#8fa1b9;
+}
+
+.pulse{
+  color:#36a1ff;
+  font-weight:900;
+  white-space:nowrap;
+}
+
+/* FILTER TABS */
 
 .tabs{
   display:flex;
   gap:8px;
   margin:25px 0;
+  overflow-x:auto;
 }
+
+.tabs button{
+  flex-shrink:0;
+}
+
+/* LEAGUE CARD */
 
 .league{
   background:#0d1420;
@@ -108,45 +155,97 @@ main{padding:30px}
   overflow:hidden;
 }
 
+/* COUNTRY + LEAGUE HEADER */
+
 .league-title{
-  padding:13px 17px;
+  padding:12px 16px;
   background:#111b2a;
-  font-weight:800;
   color:#b8c9de;
   display:flex;
   align-items:center;
-  gap:8px;
+  gap:10px;
 }
 
-.league-title img{
+.country-flag{
+  width:24px;
+  height:18px;
+  object-fit:cover;
+  border-radius:3px;
+  flex-shrink:0;
+}
+
+.league-info{
+  display:flex;
+  flex-direction:column;
+  flex:1;
+  min-width:0;
+}
+
+.country-name{
+  font-size:10px;
+  color:#71839a;
+  text-transform:uppercase;
+  margin-bottom:2px;
+}
+
+.league-info strong{
+  font-size:14px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.league-logo{
   width:28px;
   height:28px;
   object-fit:contain;
   flex-shrink:0;
 }
 
+/* MATCH ROW */
+
 .match{
   display:grid;
-  grid-template-columns:70px minmax(0,1fr) 60px minmax(0,1fr);
+  grid-template-columns:75px minmax(0,1fr) 60px minmax(0,1fr);
   align-items:center;
-  padding:15px 17px;
-  border-top:1px solid #182337;
   gap:8px;
+  padding:15px 16px;
+  border-top:1px solid #182337;
+}
+
+.status{
+  font-size:12px;
+  color:#91a2b9;
+}
+
+.status.live{
+  color:#42a1ff;
+  font-weight:800;
+}
+
+.status.finished{
+  color:#71839a;
 }
 
 .team{
   min-width:0;
   text-align:center;
   overflow:hidden;
-  overflow-wrap:anywhere;
+  font-size:13px;
 }
 
+.team-logo,
 .team img{
-  width:38px;
-  height:38px;
+  width:36px;
+  height:36px;
   object-fit:contain;
   display:block;
   margin:0 auto 6px;
+}
+
+.team span{
+  display:block;
+  overflow-wrap:anywhere;
 }
 
 .score{
@@ -156,8 +255,7 @@ main{padding:30px}
   white-space:nowrap;
 }
 
-.status.live{color:#42a1ff}
-.status.finished{color:#71839a}
+/* ADMIN */
 
 .admin{
   max-width:1150px;
@@ -175,9 +273,13 @@ main{padding:30px}
   padding:22px;
 }
 
-form{display:grid;gap:10px}
+form{
+  display:grid;
+  gap:10px;
+}
 
-input,select{
+input,
+select{
   width:100%;
   background:#080d15;
   border:1px solid #22334b;
@@ -185,6 +287,11 @@ input,select{
   border-radius:9px;
   padding:13px;
   outline:none;
+}
+
+input:focus,
+select:focus{
+  border-color:#1687ff;
 }
 
 .row{
@@ -207,9 +314,20 @@ input,select{
   gap:10px;
 }
 
-.danger{color:#ff6470}
-.ai{display:flex;flex-direction:column}
-.ai h2{margin-bottom:3px}
+.danger{
+  color:#ff6470;
+}
+
+/* AI ASSISTANT */
+
+.ai{
+  display:flex;
+  flex-direction:column;
+}
+
+.ai h2{
+  margin-bottom:3px;
+}
 
 #chat{
   height:390px;
@@ -225,40 +343,97 @@ input,select{
   line-height:1.45;
 }
 
-.bot{background:#142238}
-.user{background:#087ef5;margin-left:auto}
+.bot{
+  background:#142238;
+}
+
+.user{
+  background:#087ef5;
+  margin-left:auto;
+}
 
 .chatbox{
   display:grid;
-  grid-template-columns:1fr auto;
+  grid-template-columns:minmax(0,1fr) auto;
   gap:8px;
 }
 
-@media(max-width:760px){
-  .layout{display:block}
-  aside{display:none}
-  main{padding:15px}
-  .hero h1{font-size:25px}
+/* MOBILE */
 
-  .match{
-    grid-template-columns:55px minmax(0,1fr) 50px minmax(0,1fr);
-    padding:14px 10px;
-    gap:5px;
+@media(max-width:760px){
+
+  .layout{
+    display:block;
+  }
+
+  aside{
+    display:none;
+  }
+
+  main{
+    padding:15px;
+  }
+
+  header{
+    padding:0 16px;
+  }
+
+  .brand{
+    font-size:20px;
+  }
+
+  .hero{
+    padding:22px 18px;
+  }
+
+  .hero h1{
+    font-size:25px;
+  }
+
+  .pulse{
     font-size:12px;
   }
 
+  .match{
+    grid-template-columns:55px minmax(0,1fr) 50px minmax(0,1fr);
+    padding:14px 8px;
+    gap:4px;
+  }
+
+  .status{
+    font-size:11px;
+  }
+
+  .team{
+    font-size:12px;
+  }
+
+  .team-logo,
   .team img{
     width:34px;
     height:34px;
   }
 
-  .league-title img{
-    width:24px;
-    height:24px;
+  .score{
+    font-size:18px;
   }
 
-  .score{font-size:18px}
-  .admin{grid-template-columns:1fr}
-  .panel{padding:16px}
-  header{padding:0 16px}
+  .country-flag{
+    width:22px;
+    height:16px;
+  }
+
+  .league-logo{
+    width:26px;
+    height:26px;
+  }
+
+  .admin{
+    grid-template-columns:1fr;
+    padding:0 15px;
+  }
+
+  .panel{
+    padding:16px;
+  }
 }
