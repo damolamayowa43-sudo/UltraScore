@@ -45,8 +45,7 @@ export default async function handler(req, res) {
 
     const x = data[0];
 
-    // ---------- STATUS ----------
-
+    // STATUS
     const rawStatus = String(
       x.match_status || ""
     ).toLowerCase();
@@ -66,26 +65,16 @@ export default async function handler(req, res) {
       status = "live";
     }
 
-    // ---------- EVENTS ----------
-
+    // EVENTS
     const events = [];
 
-    // Goals
+    // GOALS
     if (Array.isArray(x.goalscorer)) {
       x.goalscorer.forEach(event => {
-        const isHome =
+        const isHome = Boolean(
           event.home_scorer ||
-          event.home_scorer_id;
-
-        const player =
-          event.home_scorer ||
-          event.away_scorer ||
-          "";
-
-        const assist =
-          event.home_assist ||
-          event.away_assist ||
-          "";
+          event.home_scorer_id
+        );
 
         events.push({
           time: event.time
@@ -100,8 +89,15 @@ export default async function handler(req, res) {
             ? x.team_home_badge || ""
             : x.team_away_badge || "",
 
-          player,
-          assist,
+          player:
+            event.home_scorer ||
+            event.away_scorer ||
+            "",
+
+          assist:
+            event.home_assist ||
+            event.away_assist ||
+            "",
 
           type: "Goal",
           detail: "Goal",
@@ -111,17 +107,13 @@ export default async function handler(req, res) {
       });
     }
 
-    // Cards
+    // CARDS
     if (Array.isArray(x.cards)) {
       x.cards.forEach(event => {
-        const isHome =
+        const isHome = Boolean(
           event.home_fault ||
-          event.home_player_id;
-
-        const player =
-          event.home_fault ||
-          event.away_fault ||
-          "";
+          event.home_player_id
+        );
 
         const cardType =
           event.card || "Card";
@@ -139,11 +131,16 @@ export default async function handler(req, res) {
             ? x.team_home_badge || ""
             : x.team_away_badge || "",
 
-          player,
+          player:
+            event.home_fault ||
+            event.away_fault ||
+            "",
+
           assist: "",
           type: "Card",
           detail: cardType,
           comments: "",
+
           icon: String(cardType)
             .toLowerCase()
             .includes("red")
@@ -153,7 +150,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // Sort events by minute
+    // SORT EVENTS
     events.sort((a, b) => {
       return (
         parseInt(a.time) || 0
@@ -162,29 +159,28 @@ export default async function handler(req, res) {
       );
     });
 
-    // ---------- STATISTICS ----------
+    // STATISTICS
+    const statistics =
+      Array.isArray(x.statistics)
+        ? x.statistics.map(stat => ({
+            type:
+              stat.type ||
+              stat.statistic_name ||
+              "Statistic",
 
-    const statistics = Array.isArray(x.statistics)
-      ? x.statistics.map(stat => ({
-          type:
-            stat.type ||
-            stat.statistic_name ||
-            "Statistic",
+            home:
+              stat.home ??
+              stat.home_value ??
+              "-",
 
-          home:
-            stat.home ??
-            stat.home_value ??
-            "-",
+            away:
+              stat.away ??
+              stat.away_value ??
+              "-"
+          }))
+        : [];
 
-          away:
-            stat.away ??
-            stat.away_value ??
-            "-"
-        }))
-      : [];
-
-    // ---------- MATCH ----------
-
+    // MATCH DATA
     const match = {
       id: x.match_id,
 
@@ -217,14 +213,18 @@ export default async function handler(req, res) {
         "",
 
       hs:
-        x.match_hometeam_score !== ""
-          ? Number(x.match_hometeam_score)
-          : 0,
+        status === "upcoming"
+          ? null
+          : Number(
+              x.match_hometeam_score || 0
+            ),
 
       as:
-        x.match_awayteam_score !== ""
-          ? Number(x.match_awayteam_score)
-          : 0,
+        status === "upcoming"
+          ? null
+          : Number(
+              x.match_awayteam_score || 0
+            ),
 
       status,
 
@@ -241,6 +241,9 @@ export default async function handler(req, res) {
           ? x.match_status || "LIVE"
           : x.match_time || "",
 
+      date:
+        x.match_date || "",
+
       venue:
         x.match_stadium ||
         "Not available",
@@ -253,7 +256,7 @@ export default async function handler(req, res) {
 
     res.setHeader(
       "Cache-Control",
-      "s-maxage=10, stale-while-revalidate=20"
+      "s-maxage=30, stale-while-revalidate=60"
     );
 
     return res.status(200).json({
@@ -271,4 +274,4 @@ export default async function handler(req, res) {
       message: error.message
     });
   }
-      }
+}
