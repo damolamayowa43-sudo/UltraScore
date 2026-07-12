@@ -2,15 +2,26 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
   <title>Match Details | UltraScore</title>
-  <link rel="stylesheet" href="style.css">
+
+  <link
+    rel="stylesheet"
+    href="style.css"
+  >
 </head>
 
 <body>
 
 <header>
-  <div class="brand"><span>ULTRA</span>SCORE</div>
+  <div class="brand">
+    <span>ULTRA</span>SCORE
+  </div>
+
   <nav>
     <a href="index.html">
       <button>← Scores</button>
@@ -18,179 +29,633 @@
   </nav>
 </header>
 
+
 <main class="match-details-page">
+
   <div id="matchDetails">
-    <p class="muted">Loading match...</p>
+    <p class="muted">
+      Loading match...
+    </p>
   </div>
+
 </main>
 
+
 <script>
-const params = new URLSearchParams(window.location.search);
-const fixtureId = params.get("id");
+
+const params =
+  new URLSearchParams(
+    window.location.search
+  );
+
+const matchId =
+  params.get("id");
+
+
+function safe(value) {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
+    return "-";
+  }
+
+  return value;
+}
+
 
 async function loadMatch() {
-  const container = document.getElementById("matchDetails");
 
-  if (!fixtureId) {
-    container.innerHTML = "<p>Match ID is missing.</p>";
+  const container =
+    document.getElementById(
+      "matchDetails"
+    );
+
+
+  if (!matchId) {
+
+    container.innerHTML = `
+      <div class="details-error">
+        Match ID is missing.
+      </div>
+    `;
+
     return;
   }
 
+
   try {
-    const response = await fetch(
-      `/api/match-details?id=${encodeURIComponent(fixtureId)}`
+
+    const response =
+      await fetch(
+        `/api/match-details?id=${
+          encodeURIComponent(matchId)
+        }&t=${Date.now()}`
+      );
+
+
+    const data =
+      await response.json();
+
+
+    console.log(
+      "Match details:",
+      data
     );
 
+
     if (!response.ok) {
-      throw new Error("Could not load match");
+
+      throw new Error(
+        data.error ||
+        "Could not load match"
+      );
+
     }
 
-    const data = await response.json();
-    const m = data.match;
+
+    const m =
+      data.match;
+
 
     if (!m) {
-      container.innerHTML = "<p>Match not found.</p>";
+
+      container.innerHTML = `
+        <div class="details-error">
+          Match not found.
+        </div>
+      `;
+
       return;
+
     }
 
-    const events = m.events || [];
 
-    const timeline = events.length
-      ? events.map(event => `
-          <div class="timeline-event">
+    /* --------------------
+       EVENTS
+    -------------------- */
 
-            <div class="event-time">
-              ${event.time || ""}
-            </div>
 
-            <div class="event-icon">
-              ${event.icon || "•"}
-            </div>
+    const events =
+      Array.isArray(m.events)
+        ? m.events
+        : [];
 
-            <div class="event-content">
-              <strong>
-                ${event.player || event.team || "Match event"}
-              </strong>
 
-              <span>
-                ${event.detail || event.type || ""}
-              </span>
+    const timeline =
+      events.length > 0
 
-              ${
-                event.assist
-                  ? `<small>Assist: ${event.assist}</small>`
-                  : ""
-              }
+        ? events
+            .map(event => `
 
-              ${
-                event.team
-                  ? `<small>${event.team}</small>`
-                  : ""
-              }
-            </div>
+              <div class="timeline-event">
 
-          </div>
-        `).join("")
-      : `
-          <p class="muted no-events">
-            No match events available yet.
-          </p>
-        `;
+                <div class="event-time">
+
+                  ${
+                    event.time || ""
+                  }
+
+                </div>
+
+
+                <div class="event-icon">
+
+                  ${
+                    event.icon || "•"
+                  }
+
+                </div>
+
+
+                <div class="event-content">
+
+                  <strong>
+
+                    ${
+                      event.player ||
+                      event.team ||
+                      "Match event"
+                    }
+
+                  </strong>
+
+
+                  <span>
+
+                    ${
+                      event.detail ||
+                      event.type ||
+                      ""
+                    }
+
+                  </span>
+
+
+                  ${
+                    event.assist
+                      ? `
+                        <small>
+                          Assist:
+                          ${event.assist}
+                        </small>
+                      `
+                      : ""
+                  }
+
+
+                  ${
+                    event.team
+                      ? `
+                        <small>
+                          ${event.team}
+                        </small>
+                      `
+                      : ""
+                  }
+
+                </div>
+
+              </div>
+
+            `)
+            .join("")
+
+        : `
+
+            <p class="muted no-events">
+
+              No match events
+              available yet.
+
+            </p>
+
+          `;
+
+
+    /* --------------------
+       STATISTICS
+    -------------------- */
+
+
+    const statistics =
+      Array.isArray(m.statistics)
+        ? m.statistics
+        : [];
+
+
+    const statisticsHTML =
+      statistics.length > 0
+
+        ? statistics
+            .map(stat => `
+
+              <div class="stat-row">
+
+                <strong class="stat-home">
+
+                  ${
+                    safe(stat.home)
+                  }
+
+                </strong>
+
+
+                <span class="stat-name">
+
+                  ${
+                    stat.type ||
+                    "Statistic"
+                  }
+
+                </span>
+
+
+                <strong class="stat-away">
+
+                  ${
+                    safe(stat.away)
+                  }
+
+                </strong>
+
+              </div>
+
+            `)
+            .join("")
+
+        : `
+
+            <p class="muted no-events">
+
+              No match statistics
+              available yet.
+
+            </p>
+
+          `;
+
+
+    /* --------------------
+       SCORE DISPLAY
+    -------------------- */
+
+
+    const scoreDisplay =
+      m.status === "upcoming"
+
+        ? `
+            <span class="upcoming-vs">
+              VS
+            </span>
+          `
+
+        : `
+            ${safe(m.hs)}
+            -
+            ${safe(m.as)}
+          `;
+
+
+    /* --------------------
+       PAGE
+    -------------------- */
+
 
     container.innerHTML = `
+
       <section class="details-card">
 
+
         <div class="details-league">
+
           ${
             m.leagueLogo
-              ? `<img src="${m.leagueLogo}" alt="${m.league || ""}">`
+
+              ? `
+                  <img
+                    src="${m.leagueLogo}"
+                    alt=""
+                  >
+                `
+
               : ""
           }
 
+
           <div>
-            <small>${m.country || ""}</small>
-            <strong>${m.league || ""}</strong>
+
+            <small>
+
+              ${
+                m.country || ""
+              }
+
+            </small>
+
+
+            <strong>
+
+              ${
+                m.league ||
+                "Unknown League"
+              }
+
+            </strong>
+
           </div>
+
         </div>
 
-        <div class="details-status">
+
+
+        <div
+          class="
+            details-status
+            ${m.status || ""}
+          "
+        >
+
           ${
             m.status === "live"
-              ? "● LIVE"
-              : m.statusText || ""
+
+              ? `
+                  <span class="live-dot">
+                    ●
+                  </span>
+
+                  LIVE
+                `
+
+              : safe(
+                  m.statusText
+                )
           }
+
 
           ${
             m.time
-              ? ` • ${m.time}`
+
+              ? `
+                  <span>
+                    • ${m.time}
+                  </span>
+                `
+
               : ""
           }
+
         </div>
+
+
 
         <div class="details-teams">
 
+
           <div class="details-team">
+
             ${
               m.homeLogo
-                ? `<img src="${m.homeLogo}" alt="${m.home}">`
+
+                ? `
+                    <img
+                      src="${m.homeLogo}"
+                      alt="${m.home || ""}"
+                    >
+                  `
+
                 : ""
             }
-            <h3>${m.home}</h3>
+
+
+            <h3>
+
+              ${
+                m.home ||
+                "Home"
+              }
+
+            </h3>
+
           </div>
+
+
 
           <div class="details-score">
-            ${m.hs} - ${m.as}
+
+            ${scoreDisplay}
+
           </div>
+
+
 
           <div class="details-team">
+
             ${
               m.awayLogo
-                ? `<img src="${m.awayLogo}" alt="${m.away}">`
+
+                ? `
+                    <img
+                      src="${m.awayLogo}"
+                      alt="${m.away || ""}"
+                    >
+                  `
+
                 : ""
             }
-            <h3>${m.away}</h3>
+
+
+            <h3>
+
+              ${
+                m.away ||
+                "Away"
+              }
+
+            </h3>
+
           </div>
 
+
         </div>
+
+
 
         <div class="details-info">
-          <div>
-            <span>Status</span>
-            <strong>${m.statusText || m.status}</strong>
-          </div>
+
 
           <div>
-            <span>Minute</span>
-            <strong>${m.time || "-"}</strong>
+
+            <span>
+              Status
+            </span>
+
+            <strong>
+
+              ${
+                safe(
+                  m.statusText
+                )
+              }
+
+            </strong>
+
           </div>
 
+
+
           <div>
-            <span>Venue</span>
-            <strong>${m.venue || "Not available"}</strong>
+
+            <span>
+              Time
+            </span>
+
+            <strong>
+
+              ${
+                safe(m.time)
+              }
+
+            </strong>
+
           </div>
+
+
+
+          <div>
+
+            <span>
+              Venue
+            </span>
+
+            <strong>
+
+              ${
+                safe(m.venue)
+              }
+
+            </strong>
+
+          </div>
+
+
+          ${
+            m.referee
+
+              ? `
+
+                  <div>
+
+                    <span>
+                      Referee
+                    </span>
+
+                    <strong>
+
+                      ${
+                        safe(
+                          m.referee
+                        )
+                      }
+
+                    </strong>
+
+                  </div>
+
+                `
+
+              : ""
+          }
+
+
         </div>
 
+
       </section>
+
+
 
       <section class="timeline-card">
-        <h2>Match Events</h2>
+
+        <h2>
+          Match Events
+        </h2>
+
         <div class="timeline">
+
           ${timeline}
+
         </div>
+
       </section>
+
+
+
+      <section class="statistics-card">
+
+        <h2>
+          Match Statistics
+        </h2>
+
+        <div class="statistics">
+
+          ${statisticsHTML}
+
+        </div>
+
+      </section>
+
     `;
 
-  } catch (error) {
-    console.error(error);
 
-    container.innerHTML =
-      "<p class='muted'>Unable to load match details.</p>";
+  } catch (error) {
+
+    console.error(
+      "Match loading error:",
+      error
+    );
+
+
+    container.innerHTML = `
+
+      <div class="details-error">
+
+        <h3>
+          Unable to load match
+        </h3>
+
+        <p class="muted">
+
+          ${
+            error.message
+          }
+
+        </p>
+
+      </div>
+
+    `;
+
   }
+
 }
 
+
+/* LOAD IMMEDIATELY */
+
 loadMatch();
-setInterval(loadMatch, 30000);
+
+
+/* REFRESH EVERY 30 SECONDS */
+
+setInterval(
+  loadMatch,
+  30000
+);
+
 </script>
+
 
 </body>
 </html>
