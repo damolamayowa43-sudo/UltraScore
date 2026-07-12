@@ -3,227 +3,204 @@ let allMatches = [];
 
 async function load() {
   try {
-    // Load matches saved in Supabase
-    allMatches = await getMatches();
+    // Load manually added matches
+    let savedMatches = [];
 
-    // Load live matches from API-Football
-    const response = await fetch("/api/live-scores");
+    try {
+      savedMatches = await getMatches();
+    } catch (error) {
+      console.error("Saved matches error:", error);
+    }
 
-    if (response.ok) {
-      const data = await response.json();
-      const apiMatches = data.matches || [];
+    // Load matches from the new API
+    const response = await fetch(
+      "/api/live-scores?t=" + Date.now()
+    );
 
-      const apiIds = new Set(
-        apiMatches.map(match => String(match.id))
-      );
+    const data = await response.json();
 
-      allMatches = [
-        ...apiMatches,
-        ...allMatches.filter(
-          match => !apiIds.has(String(match.id))
-        )
-      ];
-    } else {
-      console.error(
-        "Live scores API error:",
-        response.status
+    console.log("Football API response:", data);
+
+    if (!response.ok) {
+      throw new Error(
+        data.error || "Football API failed"
       );
     }
+
+    const apiMatches = Array.isArray(data.matches)
+      ? data.matches
+      : [];
+
+    allMatches = [
+      ...apiMatches,
+      ...savedMatches
+    ];
+
   } catch (error) {
-    console.error("Failed to load matches:", error);
+    console.error("Failed to load API matches:", error);
+
+    // Keep manually added matches visible
+    try {
+      allMatches = await getMatches();
+    } catch {
+      allMatches = [];
+    }
   }
 
   render();
 }
 
 function render() {
-  const matchesContainer =
-    document.getElementById("matches");
+  const container = document.getElementById("matches");
 
-  if (!matchesContainer) {
-    console.error(
-      'Element with id="matches" was not found.'
-    );
+  if (!container) return;
+
+  const filtered = allMatches.filter(match =>
+    filter === "all" ||
+    match.status === filter
+  );
+
+  if (filtered.length === 0) {
+    container.innerHTML = `
+      <p class="muted">
+        No matches available.
+      </p>
+    `;
     return;
   }
 
-  const filteredMatches = allMatches.filter(
-    match =>
-      filter === "all" ||
-      match.status === filter
-  );
-
   const groups = {};
 
-  filteredMatches.forEach(match => {
+  filtered.forEach(match => {
     const country =
       match.country || "International";
 
     const league =
       match.league || "Other Matches";
 
-    const groupKey =
-      `${country}__${league}`;
+    const key = `${country}__${league}`;
 
-    if (!groups[groupKey]) {
-      groups[groupKey] = {
-        country: country,
-        countryFlag:
-          match.countryFlag || "",
-        league: league,
-        leagueLogo:
-          match.leagueLogo || "",
+    if (!groups[key]) {
+      groups[key] = {
+        country,
+        countryFlag: match.countryFlag || "",
+        league,
+        leagueLogo: match.leagueLogo || "",
         matches: []
       };
     }
 
-    groups[groupKey].matches.push(match);
+    groups[key].matches.push(match);
   });
 
-  if (Object.keys(groups).length === 0) {
-    matchesContainer.innerHTML =
-      `<p class="muted">
-        No matches available.
-      </p>`;
-    return;
-  }
+  container.innerHTML = Object.values(groups)
+    .map(group => `
+      <section class="league">
 
-  matchesContainer.innerHTML =
-    Object.values(groups)
-      .map(group => `
-        <section class="league">
+        <div class="league-title">
 
-          <div class="league-title">
+          ${
+            group.countryFlag
+              ? `<img
+                   src="${group.countryFlag}"
+                   class="country-flag"
+                   alt=""
+                 >`
+              : ""
+          }
 
-            ${
-              group.countryFlag
-                ? `
-                  <img
-                    src="${group.countryFlag}"
-                    class="country-flag"
-                    alt=""
-                  >
-                `
-                : ""
-            }
+          <div class="league-info">
+            <span class="country-name">
+              ${group.country}
+            </span>
 
-            <div class="league-info">
-              <span class="country-name">
-                ${group.country}
-              </span>
-
-              <strong>
-                ${group.league}
-              </strong>
-            </div>
-
-            ${
-              group.leagueLogo
-                ? `
-                  <img
-                    src="${group.leagueLogo}"
-                    class="league-logo"
-                    alt=""
-                  >
-                `
-                : ""
-            }
-
+            <strong>
+              ${group.league}
+            </strong>
           </div>
 
-          ${group.matches
-            .map(m => `
-              <div
-                class="match"
-                data-id="${m.id}"
-                data-source="${m.source || ""}"
-              >
+          ${
+            group.leagueLogo
+              ? `<img
+                   src="${group.leagueLogo}"
+                   class="league-logo"
+                   alt=""
+                 >`
+              : ""
+          }
 
-                <div
-                  class="status ${m.status || ""}"
-                >
-                  ${
-                    m.status === "live"
-                      ? `● ${m.time || ""}`
-                      : `${m.time || ""}`
-                  }
-                </div>
+        </div>
 
-                <div class="team">
+        ${group.matches.map(m => `
+          <div
+            class="match"
+            data-id="${m.id || ""}"
+            data-source="${m.source || ""}"
+          >
 
-                  ${
-                    m.homeLogo
-                      ? `
-                        <img
-                          src="${m.homeLogo}"
-                          class="team-logo"
-                          alt=""
-                        >
-                      `
-                      : ""
-                  }
+            <div class="status ${m.status || ""}">
+              ${
+                m.status === "live"
+                  ? `● ${m.time || "LIVE"}`
+                  : m.time || ""
+              }
+            </div>
 
-                  <span>
-                    ${m.home || ""}
-                  </span>
+            <div class="team">
+              ${
+                m.homeLogo
+                  ? `<img
+                       src="${m.homeLogo}"
+                       class="team-logo"
+                       alt=""
+                     >`
+                  : ""
+              }
 
-                </div>
+              <span>${m.home || ""}</span>
+            </div>
 
-                <div class="score">
-                  ${m.hs ?? "-"}
-                  -
-                  ${m.as ?? "-"}
-                </div>
+            <div class="score">
+              ${m.hs ?? "-"} - ${m.as ?? "-"}
+            </div>
 
-                <div class="team">
+            <div class="team">
+              ${
+                m.awayLogo
+                  ? `<img
+                       src="${m.awayLogo}"
+                       class="team-logo"
+                       alt=""
+                     >`
+                  : ""
+              }
 
-                  ${
-                    m.awayLogo
-                      ? `
-                        <img
-                          src="${m.awayLogo}"
-                          class="team-logo"
-                          alt=""
-                        >
-                      `
-                      : ""
-                  }
+              <span>${m.away || ""}</span>
+            </div>
 
-                  <span>
-                    ${m.away || ""}
-                  </span>
+          </div>
+        `).join("")}
 
-                </div>
-
-              </div>
-            `)
-            .join("")}
-
-        </section>
-      `)
-      .join("");
+      </section>
+    `).join("");
 
   document
     .querySelectorAll(".match")
-    .forEach(matchElement => {
-      matchElement.onclick = () => {
-        const id =
-          matchElement.dataset.id;
+    .forEach(element => {
 
-        const source =
-          matchElement.dataset.source;
+      element.onclick = () => {
+        const id = element.dataset.id;
+        const source = element.dataset.source;
 
         openMatch(id, source);
       };
+
     });
 }
 
 function openMatch(id, source) {
-  // Only open detail page for API-Football matches
-  if (
-    source === "api-football" &&
-    id
-  ) {
+  // Correct source name for your NEW API
+  if (source === "apifootball" && id) {
     window.location.href =
       `match.html?id=${encodeURIComponent(id)}`;
   }
@@ -251,8 +228,6 @@ document
 
   });
 
-// Load immediately
 load();
 
-// Refresh every 30 seconds
 setInterval(load, 30000);
